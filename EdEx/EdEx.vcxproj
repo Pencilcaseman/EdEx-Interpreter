@@ -141,6 +141,13 @@
   <ItemGroup>
     <ClCompile Include="EdEx.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="edex.h" />
+    <ClInclude Include="include\ide.h" />
+    <ClInclude Include="include\olcPixelGameEngine.h" />
+    <ClInclude Include="include\textWindow.h" />
+    <ClInclude Include="include\utils.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
