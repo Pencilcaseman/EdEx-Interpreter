@@ -19,21 +19,10 @@ namespace edex
 		olc::Pixel textColor;
 		int textScale;
 
-		/// <summary>
-		/// Default constructor. Create an empty window
-		/// </summary>
 		TextWindow() : originX(0), originY(0), width(100), height(100), textScale(1)
 		{}
 
-		/// <summary>
-		/// Main constructor. Create a window with a specified origin,
-		/// width and height.
-		/// </summary>
-		/// <param name="x"></param>
-		/// <param name="y"></param>
-		/// <param name="w"></param>
-		/// <param name="h"></param>
-		TextWindow(int x, int y, int w, int h) : originX(x), originY(y), width(w), height(h)
+		TextWindow(int x, int y, int w, int h) : originX(x), originY(y), width(w), height(h), textScale(1)
 		{}
 
 		inline void setBackground(const olc::Pixel &newColor)
@@ -66,6 +55,19 @@ namespace edex
 			}
 
 			return true;
+		}
+
+		inline void makeFullScreen(olc::PixelGameEngine *window)
+		{
+			originX = 0;
+			originY = 0;
+			width = window->ScreenWidth();
+			height = window->ScreenHeight();
+		}
+
+		bool registerKey(uint32_t key)
+		{
+
 		}
 	};
 }

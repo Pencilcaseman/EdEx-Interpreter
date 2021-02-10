@@ -35,5 +35,8 @@
     <ClInclude Include="include\ide.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\cursor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

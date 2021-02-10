@@ -1040,10 +1040,17 @@ namespace olc
 		// Returns the font image
 		olc::Sprite *GetFontSprite();
 
+	public:
+		// SOME CUSTOM THINGS FOR THE CALLBACK SYSTEM
+		virtual void OnKeyPress(int key)
+		{
+			std::cout << "Key Pressed: " << key << "\n";
+		}
+
 	public: // Branding
 		std::string sAppName;
 
-	private: // Inner mysterious workings
+	public: // Inner mysterious workings -- MADE PUBLIC FOR MORE CONTROL
 		Sprite *pDrawTarget = nullptr;
 		Pixel::Mode	nPixelMode = Pixel::NORMAL;
 		float		fBlendFactor = 1.0f;
@@ -1152,6 +1159,41 @@ namespace olc
 }
 
 #endif // OLC_PGE_DEF
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include "textWindow.h"
+#include "ide.h"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -4680,23 +4722,23 @@ namespace olc
 						ptrPGE->olc_UpdateMouse(ix, iy);
 						return 0;
 					}
-				case WM_SIZE:       ptrPGE->olc_UpdateWindowSize(lParam & 0xFFFF, (lParam >> 16) & 0xFFFF);	return 0;
-				case WM_MOUSEWHEEL:	ptrPGE->olc_UpdateMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));           return 0;
-				case WM_MOUSELEAVE: ptrPGE->olc_UpdateMouseFocus(false);                                    return 0;
-				case WM_SETFOCUS:	ptrPGE->olc_UpdateKeyFocus(true);                                       return 0;
-				case WM_KILLFOCUS:	ptrPGE->olc_UpdateKeyFocus(false);                                      return 0;
-				case WM_KEYDOWN:	ptrPGE->olc_UpdateKeyState(mapKeys[wParam], true);                      return 0;
-				case WM_KEYUP:		ptrPGE->olc_UpdateKeyState(mapKeys[wParam], false);                     return 0;
-				case WM_SYSKEYDOWN: ptrPGE->olc_UpdateKeyState(mapKeys[wParam], true);						return 0;
-				case WM_SYSKEYUP:	ptrPGE->olc_UpdateKeyState(mapKeys[wParam], false);						return 0;
-				case WM_LBUTTONDOWN:ptrPGE->olc_UpdateMouseState(0, true);                                  return 0;
-				case WM_LBUTTONUP:	ptrPGE->olc_UpdateMouseState(0, false);                                 return 0;
-				case WM_RBUTTONDOWN:ptrPGE->olc_UpdateMouseState(1, true);                                  return 0;
-				case WM_RBUTTONUP:	ptrPGE->olc_UpdateMouseState(1, false);                                 return 0;
-				case WM_MBUTTONDOWN:ptrPGE->olc_UpdateMouseState(2, true);                                  return 0;
-				case WM_MBUTTONUP:	ptrPGE->olc_UpdateMouseState(2, false);                                 return 0;
-				case WM_CLOSE:		ptrPGE->olc_Terminate();                                                return 0;
-				case WM_DESTROY:	PostQuitMessage(0); DestroyWindow(hWnd);								return 0;
+				case WM_SIZE:       ptrPGE->olc_UpdateWindowSize(lParam & 0xFFFF, (lParam >> 16) & 0xFFFF);																			return 0;
+				case WM_MOUSEWHEEL:	ptrPGE->olc_UpdateMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));				edex::ptrIDE->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));			return 0;
+				case WM_MOUSELEAVE: ptrPGE->olc_UpdateMouseFocus(false);																											return 0;
+				case WM_SETFOCUS:	ptrPGE->olc_UpdateKeyFocus(true);																												return 0;
+				case WM_KILLFOCUS:	ptrPGE->olc_UpdateKeyFocus(false);																												return 0;
+				case WM_KEYDOWN:	ptrPGE->olc_UpdateKeyState(mapKeys[wParam], true);							edex::ptrIDE->OnKeyPress(mapKeys[wParam]);							return 0;
+				case WM_KEYUP:		ptrPGE->olc_UpdateKeyState(mapKeys[wParam], false);							edex::ptrIDE->OnKeyRelease(mapKeys[wParam]);						return 0;
+				case WM_SYSKEYDOWN: ptrPGE->olc_UpdateKeyState(mapKeys[wParam], true);							edex::ptrIDE->OnKeyPress(mapKeys[wParam]);							return 0;
+				case WM_SYSKEYUP:	ptrPGE->olc_UpdateKeyState(mapKeys[wParam], false);							edex::ptrIDE->OnKeyRelease(mapKeys[wParam]);						return 0;
+				case WM_LBUTTONDOWN:ptrPGE->olc_UpdateMouseState(0, true);										edex::ptrIDE->OnMouseDown(0);										return 0;
+				case WM_LBUTTONUP:	ptrPGE->olc_UpdateMouseState(0, false);										edex::ptrIDE->OnMouseRelease(0);									return 0;
+				case WM_RBUTTONDOWN:ptrPGE->olc_UpdateMouseState(1, true);										edex::ptrIDE->OnMouseDown(1);										return 0;
+				case WM_RBUTTONUP:	ptrPGE->olc_UpdateMouseState(1, false);										edex::ptrIDE->OnMouseRelease(1);									return 0;
+				case WM_MBUTTONDOWN:ptrPGE->olc_UpdateMouseState(2, true);										edex::ptrIDE->OnMouseDown(2);										return 0;
+				case WM_MBUTTONUP:	ptrPGE->olc_UpdateMouseState(2, false);										edex::ptrIDE->OnMouseRelease(2);									return 0;
+				case WM_CLOSE:		ptrPGE->olc_Terminate();																														return 0;
+				case WM_DESTROY:	PostQuitMessage(0); DestroyWindow(hWnd);																										return 0;
 			}
 			return DefWindowProc(hWnd, uMsg, wParam, lParam);
 		}
@@ -4706,6 +4748,14 @@ namespace olc
 // O------------------------------------------------------------------------------O
 // | END PLATFORM: MICROSOFT WINDOWS XP, VISTA, 7, 8, 10                          |
 // O------------------------------------------------------------------------------O
+
+
+/*
+void PixelGameEngine::olc_UpdateKeyState(int32_t key, bool state)
+	{
+		pKeyNewState[key] = state;
+	}
+*/
 
 
 
