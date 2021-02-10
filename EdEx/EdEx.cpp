@@ -2,7 +2,7 @@
 
 edex::IDE ide;
 
-int main()
+int32_t main()
 {
 	std::cout << "EdEx IDE and Interpreter\n";
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cursor.h"
+
 namespace edex
 {
 	class TextWindow
@@ -9,17 +11,18 @@ namespace edex
 		std::vector<std::string> lines = {""};
 
 		// Position data
-		int originX;
-		int originY;
-		int width;
-		int height;
+		int32_t originX;
+		int32_t originY;
+		int32_t width;
+		int32_t height;
 
 		// Appearance data
 		bool syntaxHighlight = false;
 		std::vector<std::pair<std::vector<std::string>, olc::Pixel>> highlightRules;
 		olc::Pixel background;
 		olc::Pixel textColor;
-		int textScale;
+		int32_t textScale;
+
 
 		// Graphics window the text is in
 		olc::PixelGameEngine *window = nullptr;
@@ -28,10 +31,13 @@ namespace edex
 		bool shiftHeld = false;
 		bool capsLock = false;
 
+		// Cursor
+		Cursor cursor;
+
 		TextWindow() : originX(0), originY(0), width(100), height(100), textScale(1)
 		{}
 
-		TextWindow(int x, int y, int w, int h, olc::PixelGameEngine *olcWindow) : originX(x), originY(y), width(w), height(h), textScale(1), window(olcWindow)
+		TextWindow(int32_t x, int32_t y, int32_t w, int32_t h, olc::PixelGameEngine *olcWindow) : originX(x), originY(y), width(w), height(h), textScale(1), window(olcWindow)
 		{}
 
 		inline void setBackground(const olc::Pixel &newColor)
@@ -44,7 +50,7 @@ namespace edex
 			textColor = newColor;
 		}
 
-		inline void setTextScale(const int &newScale)
+		inline void setTextScale(const int32_t &newScale)
 		{
 			textScale = newScale;
 		}
@@ -62,10 +68,10 @@ namespace edex
 		bool render(olc::PixelGameEngine *window)
 		{
 			// Draw the background
-			int drawOriginX = std::max(originX, 0);
-			int drawOriginY = std::max(originY, 0);
-			int drawWidth = std::min(originX + width, window->ScreenWidth());
-			int drawHeight = std::min(originY + height, window->ScreenHeight());
+			int32_t drawOriginX = std::max(originX, 0);
+			int32_t drawOriginY = std::max(originY, 0);
+			int32_t drawWidth = std::min(originX + width, window->ScreenWidth());
+			int32_t drawHeight = std::min(originY + height, window->ScreenHeight());
 
 			if (drawOriginX == 0 && drawOriginY == 0 && drawWidth == window->ScreenWidth() && drawHeight == window->ScreenHeight())
 				window->Clear(background);
@@ -77,7 +83,7 @@ namespace edex
 			{
 				if (!syntaxHighlight)
 				{
-					window->DrawString(10, i * 10, lines[i], textColor, textScale);
+					window->DrawString(10, i * 10 * textScale, lines[i], textColor, textScale);
 				}
 				else
 				{
@@ -93,11 +99,19 @@ namespace edex
 								if (token == valid)
 									color = rule.second;
 
-						window->DrawString(10 + currentLen * 8, i * 10 + 10, token + " ", color, textScale);
+						window->DrawString(currentLen * 8 * textScale, i * 10 * textScale, token + " ", color, textScale);
 
 						currentLen += token.length() + 1;
 					}
 				}
+			}
+
+			// Render the cursor
+			if (cursor.active)
+			{
+				uint32_t x = originX + cursor.linePos * 8 * textScale;
+				uint32_t y = originY + cursor.line * 10 * textScale;
+				window->FillRect(x, y, cursor.width, 10, cursor.color);
 			}
 
 			return true;
@@ -125,27 +139,92 @@ namespace edex
 
 		inline bool typeCharacter(int32_t key)
 		{
-			lines[lines.size() - 1] += (char) key;
+			if (cursor.active)
+			{
+				auto &line = lines[cursor.line];
+				line.insert(cursor.linePos, std::string(1, (char) key));
+				cursor.linePos++;
+			}
 
 			return true;
 		}
 
 		inline bool deleteCharacter()
 		{
-			auto &line = lines[lines.size() - 1];
+			if (cursor.active)
+			{
+				auto &line = lines[cursor.line];
 
-			if (line.length() > 0)
-				line.erase(line.end() - 1);
-			else if (lines.size() > 1)
-				lines.erase(lines.end() - 1);
-			if (line.length() == 0)
-				line = "";
+				if (line.length() > 0)
+				{
+					cursor.linePos--;
+					line.erase(line.begin() + cursor.linePos, line.begin() + cursor.linePos + 1);
+				}
+				else if (lines.size() > 1)
+				{
+					lines.erase(lines.begin() + cursor.line, lines.begin() + cursor.line + 1);
+					cursor.line--;
+					cursor.linePos = lines[cursor.line].length() - 1;
+				}
+				if (line.length() == 0)
+					line = "";
+			}
 
 			return true;
 		}
 
-		bool registerKey(uint32_t key, int press)
+		bool registerKey(uint32_t key, int32_t press)
 		{
+			// Check for cursor operations first
+			if (press)
+			{
+				if (key == olc::UP)
+				{
+					if (cursor.line > 0)
+						cursor.line--;
+					if (lines[cursor.line].length() <= cursor.linePos)
+						cursor.linePos = lines[cursor.line].length();
+
+					return true;
+				}
+				else if (key == olc::DOWN)
+				{
+					if (cursor.line < lines.size() - 1)
+						cursor.line++;
+					if (lines[cursor.line].length() <= cursor.linePos)
+						cursor.linePos = lines[cursor.line].length();
+
+					return true;
+				}
+				else if (key == olc::LEFT)
+				{
+					if (cursor.linePos > 0)
+						cursor.linePos--;
+					else if (cursor.line > 0)
+					{
+						cursor.line--;
+						cursor.linePos = lines[cursor.line].length();
+					}
+
+					return true;
+				}
+				else if (key == olc::RIGHT)
+				{
+					if (lines[cursor.line].length() == 0)
+						return true;
+
+					if (cursor.linePos < lines[cursor.line].length())
+						cursor.linePos++;
+					else if (cursor.line < lines.size() - 1)
+					{
+						cursor.line++;
+						cursor.linePos = lines[cursor.line].length();
+					}
+
+					return true;
+				}
+			}
+
 			if (key == olc::SHIFT && press)
 			{
 				shiftHeld = true;
@@ -193,18 +272,18 @@ namespace edex
 				{
 					if (!shiftHeld)
 					{
-						for (int tabIndex = 0; tabIndex < 4; tabIndex++)
+						for (int32_t tabIndex = 0; tabIndex < 4; tabIndex++)
 							if (!typeCharacter(' '))
 								return false;
 						return true;
 					}
 
 					bool previousIsTab = true;
-					for (int tabIndex = 3; tabIndex >= 0; tabIndex--)
+					for (int32_t tabIndex = 3; tabIndex >= 0; tabIndex--)
 						if (getCharacter(-tabIndex) != ' ')
 							return false;
 
-					for (int tabIndex = 0; tabIndex < 4; tabIndex++)
+					for (int32_t tabIndex = 0; tabIndex < 4; tabIndex++)
 						if (!deleteCharacter())
 							return false;
 
@@ -215,6 +294,8 @@ namespace edex
 				else if (key == olc::ENTER)													// Enter
 				{
 					lines.emplace_back("");
+					cursor.line++;
+					cursor.linePos = 0;
 					return true;
 				}
 				else if (key == olc::SPACE)													// Space

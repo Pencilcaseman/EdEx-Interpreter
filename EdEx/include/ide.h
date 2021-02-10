@@ -37,6 +37,7 @@ namespace edex
 										 {{"AND", "OR", "NOT", "XOR", "NOR", "NAND", "XNOR"}, {210, 76, 76}}});
 
 			windows[0].setTextScale(1);
+			windows[0].cursor.active = true;
 
 			return true;
 		}
