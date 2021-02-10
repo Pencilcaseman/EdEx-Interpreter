@@ -24,11 +24,19 @@ namespace edex
 			ptrIDE = this;
 
 			windows.emplace_back(TextWindow(0, 0, ScreenWidth(), ScreenHeight(), this));
-			windows[0].setBackground({255, 255, 255});
-			windows[0].setTextColor({0, 0, 0});
+			windows[0].setBackground({67, 94, 103});
+			windows[0].setTextColor({204, 204, 204});
 
 			timeOpened = seconds();
 			windows[0].makeFullScreen();
+
+			windows[0].setSyntaxHighlight(true);
+			windows[0].setHighlightRules({{{"SET", "TO", "IF", "END", "THEN", "FUNCTION", "PROCEDURE"}, {231, 182, 102}},
+										  {{"FOR", "WHILE"}, {64, 170, 72}},
+										  {{"DIV", "MOD", "POW"}, {58, 168, 173}},
+										 {{"AND", "OR", "NOT", "XOR", "NOR", "NAND", "XNOR"}, {210, 76, 76}}});
+
+			windows[0].setTextScale(1);
 
 			return true;
 		}
@@ -59,7 +67,7 @@ namespace edex
 		{
 			if (!windows[0].registerKey(key, 1))
 			{
-				std::cout << "Error typing key. Could be invalid or not supported yet\n";
+				std::cout << "Unable to type key: " << key << "\n";
 			}
 		};
 
