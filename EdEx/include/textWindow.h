@@ -67,7 +67,10 @@ namespace edex
 
 		bool registerKey(uint32_t key)
 		{
+			if (key >= 0 && key < 26)
+				lines[0] += (char) (key + 65);
 
+			return true;
 		}
 	};
 }

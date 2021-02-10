@@ -13,6 +13,7 @@ int main()
 	ide.windows[0].setBackground({255, 255, 255});
 	ide.windows[0].setTextColor({0, 0, 0});
 	ide.windows[0].lines.emplace_back("Hello, World!");
+	ide.OnKeyPress(0);
 
 	ide.Start();
 
