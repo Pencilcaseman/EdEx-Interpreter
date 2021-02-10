@@ -15,7 +15,6 @@ namespace edex
 		{
 			timeOpened = 0;
 			std::cout << "Initializing IDE window\n";
-			windows.emplace_back(TextWindow(0, 0, ScreenWidth(), ScreenHeight()));
 		}
 
 		bool OnUserCreate()
@@ -24,8 +23,12 @@ namespace edex
 
 			ptrIDE = this;
 
+			windows.emplace_back(TextWindow(0, 0, ScreenWidth(), ScreenHeight(), this));
+			windows[0].setBackground({255, 255, 255});
+			windows[0].setTextColor({0, 0, 0});
+
 			timeOpened = seconds();
-			windows[0].makeFullScreen(this);
+			windows[0].makeFullScreen();
 
 			return true;
 		}
@@ -54,12 +57,15 @@ namespace edex
 
 		void OnKeyPress(uint32_t key)
 		{
-			windows[0].registerKey(key);
+			if (!windows[0].registerKey(key, 1))
+			{
+				std::cout << "Error typing key. Could be invalid or not supported yet\n";
+			}
 		};
 
 		void OnKeyRelease(uint32_t key)
 		{
-			std::cout << "Key Released: " << key << "\n";
+			windows[0].registerKey(key, 0);
 		};
 
 		void OnMouseDown(uint32_t button)
