@@ -14,5 +14,7 @@ namespace edex
 		// Appearance
 		olc::Pixel color = {0, 0, 0};
 		uint32_t width = 1;
-	};
+
+		double lastUpdate = 0;
+	} Cursor;
 }

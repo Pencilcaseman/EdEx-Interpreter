@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cursor.h"
+#include "highlightRule.h"
 
 namespace edex
 {
@@ -18,11 +19,10 @@ namespace edex
 
 		// Appearance data
 		bool syntaxHighlight = false;
-		std::vector<std::pair<std::vector<std::string>, olc::Pixel>> highlightRules;
+		Rules highlightRules;
 		olc::Pixel background;
 		olc::Pixel textColor;
 		int32_t textScale;
-
 
 		// Graphics window the text is in
 		olc::PixelGameEngine *window = nullptr;
@@ -35,10 +35,14 @@ namespace edex
 		Cursor cursor;
 
 		TextWindow() : originX(0), originY(0), width(100), height(100), textScale(1)
-		{}
+		{
+			cursor.lastUpdate = seconds();
+		}
 
 		TextWindow(int32_t x, int32_t y, int32_t w, int32_t h, olc::PixelGameEngine *olcWindow) : originX(x), originY(y), width(w), height(h), textScale(1), window(olcWindow)
-		{}
+		{
+			cursor.lastUpdate = seconds();
+		}
 
 		inline void setBackground(const olc::Pixel &newColor)
 		{
@@ -60,9 +64,67 @@ namespace edex
 			syntaxHighlight = val;
 		}
 
-		inline void setHighlightRules(const std::vector<std::pair<std::vector<std::string>, olc::Pixel>> &rules)
+		inline void setHighlightRules(const Rules &rules)
 		{
 			highlightRules = rules;
+		}
+
+		inline std::vector<std::pair<std::string, olc::Pixel>> highlightLine(const std::string &line)
+		{
+			if (line.size() == 0)
+				return {};
+
+			std::vector<std::pair<std::string, olc::Pixel>> res;
+			std::vector<std::string> tokens = splitString(line, highlightRules.delimiters);
+
+			Rule selectedRule;
+			bool ruleFound = false;
+
+			// Parse regex expressions for a match
+			for (const auto &rule : highlightRules.rule)
+			{
+				if (std::regex_search(line, std::regex(rule.regex)))
+				{
+					selectedRule = rule;
+					ruleFound = true;
+				}
+			}
+
+			for (const auto &token : tokens)
+			{
+				bool set = false;
+				if (ruleFound)
+				{
+					for (const auto &key : selectedRule.format)
+					{
+						if (token == key.first)
+						{
+							res.emplace_back(std::make_pair(token, key.second));
+							set = true;
+						}
+					}
+				}
+
+				for (const auto &rule : highlightRules.rule)
+				{
+					if (rule.checkTokens)
+					{
+						for (const auto &key : rule.format)
+						{
+							if (token == key.first)
+							{
+								res.emplace_back(std::make_pair(token, key.second));
+								set = true;
+							}
+						}
+					}
+				}
+
+				if (!set)
+					res.emplace_back(std::make_pair(token, textColor));
+			}
+
+			return res;
 		}
 
 		bool render(olc::PixelGameEngine *window)
@@ -83,25 +145,17 @@ namespace edex
 			{
 				if (!syntaxHighlight)
 				{
-					window->DrawString(10, i * 10 * textScale, lines[i], textColor, textScale);
+					window->DrawString(0, i * 10 * textScale, lines[i], textColor, textScale);
 				}
 				else
 				{
-					auto &line = lines[i];
-					std::istringstream stream(line);
-					std::string token;
-					size_t currentLen = 0;
-					while (std::getline(stream, token, ' '))
+					auto highlighted = highlightLine(lines[i]);
+
+					uint64_t len = 0;
+					for (const auto &token : highlighted)
 					{
-						olc::Pixel color = textColor;
-						for (const auto &rule : highlightRules)
-							for (const auto &valid : rule.first)
-								if (token == valid)
-									color = rule.second;
-
-						window->DrawString(currentLen * 8 * textScale, i * 10 * textScale, token + " ", color, textScale);
-
-						currentLen += token.length() + 1;
+						window->DrawString(len * 8 * textScale, i * 10 * textScale, token.first, token.second, textScale);
+						len += token.first.length();
 					}
 				}
 			}
@@ -109,9 +163,12 @@ namespace edex
 			// Render the cursor
 			if (cursor.active)
 			{
-				uint32_t x = originX + cursor.linePos * 8 * textScale;
-				uint32_t y = originY + cursor.line * 10 * textScale;
-				window->FillRect(x, y, cursor.width, 10, cursor.color);
+				if (((int32_t) ((seconds() - cursor.lastUpdate) * 2)) % 2 == 0)
+				{
+					uint32_t x = originX + cursor.linePos * 8 * textScale;
+					uint32_t y = originY + cursor.line * 10 * textScale;
+					window->FillRect(x, y, cursor.width * textScale, 10 * textScale, cursor.color);
+				}
 			}
 
 			return true;
@@ -127,14 +184,12 @@ namespace edex
 
 		inline int32_t getCharacter(int32_t offset = 0) const
 		{
-			auto &line = lines[lines.size() - 1];
+			auto &line = lines[cursor.line];
 
-			if (offset > 0) // update to check bounds when cursor is implemented
-				return 0;
-			else if (offset < 0 && line.length() <= -offset)
+			if ((int32_t) cursor.linePos + (int32_t) offset < 0 || (int32_t) cursor.linePos + (int32_t) offset >= (int32_t) line.length()) // update to check bounds when cursor is implemented
 				return 0;
 
-			return line[line.length() - 1 + offset];
+			return line[(uint64_t) cursor.linePos + (uint64_t) offset - 1];
 		}
 
 		inline bool typeCharacter(int32_t key)
@@ -144,6 +199,7 @@ namespace edex
 				auto &line = lines[cursor.line];
 				line.insert(cursor.linePos, std::string(1, (char) key));
 				cursor.linePos++;
+				cursor.lastUpdate = seconds();
 			}
 
 			return true;
@@ -155,7 +211,7 @@ namespace edex
 			{
 				auto &line = lines[cursor.line];
 
-				if (line.length() > 0)
+				if (cursor.linePos > 0)
 				{
 					cursor.linePos--;
 					line.erase(line.begin() + cursor.linePos, line.begin() + cursor.linePos + 1);
@@ -164,10 +220,12 @@ namespace edex
 				{
 					lines.erase(lines.begin() + cursor.line, lines.begin() + cursor.line + 1);
 					cursor.line--;
-					cursor.linePos = lines[cursor.line].length() - 1;
+					cursor.linePos = lines[cursor.line].length();
 				}
 				if (line.length() == 0)
 					line = "";
+
+				cursor.lastUpdate = seconds();
 			}
 
 			return true;

@@ -31,12 +31,9 @@ namespace edex
 			windows[0].makeFullScreen();
 
 			windows[0].setSyntaxHighlight(true);
-			windows[0].setHighlightRules({{{"SET", "TO", "IF", "END", "THEN", "FUNCTION", "PROCEDURE"}, {231, 182, 102}},
-										  {{"FOR", "WHILE"}, {64, 170, 72}},
-										  {{"DIV", "MOD", "POW"}, {58, 168, 173}},
-										 {{"AND", "OR", "NOT", "XOR", "NOR", "NAND", "XNOR"}, {210, 76, 76}}});
+			windows[0].setHighlightRules(generateRules());
 
-			windows[0].setTextScale(1);
+			windows[0].setTextScale(2);
 			windows[0].cursor.active = true;
 
 			return true;
@@ -68,7 +65,7 @@ namespace edex
 		{
 			if (!windows[0].registerKey(key, 1))
 			{
-				std::cout << "Unable to type key: " << key << "\n";
+				std::cout << "Unable to process key: " << key << "\n";
 			}
 		};
 
