@@ -69,13 +69,15 @@ namespace edex
 			highlightRules = rules;
 		}
 
-		inline std::vector<std::pair<std::string, olc::Pixel>> highlightLine(const std::string &line)
+		
+		/*
+		inline std::vector<std::pair<std::string, olc::Pixel>> highlightLine(const std::string line)
 		{
-			if (line.size() == 0)
-				return {};
+			if (line.empty() || line[0] == '\0')
+				return {std::make_pair(std::string(""), olc::Pixel{0, 0, 0})};
 
 			std::vector<std::pair<std::string, olc::Pixel>> res;
-			std::vector<std::string> tokens = splitString(line, highlightRules.delimiters);
+			std::vector<std::string> tokens = splitString(line, highlightRules.delimiter);
 
 			Rule selectedRule;
 			bool ruleFound = false;
@@ -83,10 +85,13 @@ namespace edex
 			// Parse regex expressions for a match
 			for (const auto &rule : highlightRules.rule)
 			{
-				if (std::regex_search(line, std::regex(rule.regex)))
+				if (!rule.checkTokens)
 				{
-					selectedRule = rule;
-					ruleFound = true;
+					if (std::regex_search(line, std::regex(rule.regex)))
+					{
+						selectedRule = rule;
+						ruleFound = true;
+					}
 				}
 			}
 
@@ -99,7 +104,7 @@ namespace edex
 					{
 						if (token == key.first)
 						{
-							res.emplace_back(std::make_pair(token, key.second));
+							res.push_back(std::make_pair(token, key.second));
 							set = true;
 						}
 					}
@@ -113,7 +118,7 @@ namespace edex
 						{
 							if (token == key.first)
 							{
-								res.emplace_back(std::make_pair(token, key.second));
+								res.push_back(std::make_pair(token, key.second));
 								set = true;
 							}
 						}
@@ -121,7 +126,66 @@ namespace edex
 				}
 
 				if (!set)
-					res.emplace_back(std::make_pair(token, textColor));
+					res.push_back(std::make_pair(token, textColor));
+			}
+
+			return res;
+		}
+		*/
+
+		inline std::vector<std::pair<std::string, olc::Pixel>> highlightLine(const std::string line)
+		{
+			std::vector<std::pair<std::string, olc::Pixel>> res;
+			std::vector<std::string> tokens = splitString(line, highlightRules.delimiters);
+
+			Rule selectedRule;
+			bool ruleFound = false;
+
+			// Parse regex expressions for a match
+			for (const auto &rule : highlightRules.rule)
+			{
+				if (!rule.checkTokens)
+				{
+					if (std::regex_search(line, std::regex(rule.regex)))
+					{
+						selectedRule = rule;
+						ruleFound = true;
+					}
+				}
+			}
+
+			for (const auto &token : tokens)
+			{
+				bool set = false;
+				if (ruleFound)
+				{
+					for (const auto &key : selectedRule.format)
+					{
+						if (token == key.first)
+						{
+							res.push_back(std::make_pair(token, key.second));
+							set = true;
+						}
+					}
+				}
+
+				for (const auto &rule : highlightRules.rule)
+				{
+					if (rule.checkTokens)
+					{
+						for (const auto &key : rule.format)
+						{
+							if (token == key.first)
+							{
+								res.push_back(std::make_pair(token, key.second));
+								set = true;
+							}
+						}
+					}
+				}
+
+				if (!set)
+					res.push_back(std::make_pair(token, textColor));
 			}
 
 			return res;
@@ -351,7 +415,7 @@ namespace edex
 					return typeCharacter(key);
 				else if (key == olc::ENTER)													// Enter
 				{
-					lines.emplace_back("");
+					lines.push_back("");
 					cursor.line++;
 					cursor.linePos = 0;
 					return true;

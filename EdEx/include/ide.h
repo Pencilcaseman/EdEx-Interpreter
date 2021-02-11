@@ -23,7 +23,7 @@ namespace edex
 
 			ptrIDE = this;
 
-			windows.emplace_back(TextWindow(0, 0, ScreenWidth(), ScreenHeight(), this));
+			windows.push_back(TextWindow(0, 0, ScreenWidth(), ScreenHeight(), this));
 			windows[0].setBackground({67, 94, 103});
 			windows[0].setTextColor({204, 204, 204});
 
@@ -33,7 +33,7 @@ namespace edex
 			windows[0].setSyntaxHighlight(true);
 			windows[0].setHighlightRules(generateRules());
 
-			windows[0].setTextScale(2);
+			windows[0].setTextScale(1);
 			windows[0].cursor.active = true;
 
 			return true;
