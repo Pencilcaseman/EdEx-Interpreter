@@ -218,9 +218,13 @@ namespace edex
 				}
 				else if (lines.size() > 1)
 				{
+					std::string endLine(lines[cursor.line].begin() + cursor.linePos, lines[cursor.line].end());
+					lines[cursor.line].erase(lines[cursor.line].begin() + cursor.linePos, lines[cursor.line].end());
+					lines[cursor.line - 1] += endLine; // (lines.begin() + cursor.line, endLine);
+
 					lines.erase(lines.begin() + cursor.line, lines.begin() + cursor.line + 1);
 					cursor.line--;
-					cursor.linePos = lines[cursor.line].length();
+					cursor.linePos = lines[cursor.line].length() - endLine.length();
 				}
 				if (line.length() == 0)
 					line = "";
@@ -351,7 +355,10 @@ namespace edex
 					return typeCharacter(key);
 				else if (key == olc::ENTER)													// Enter
 				{
-					lines.push_back("");
+					// Extract the remaining line text
+					std::string endLine(lines[cursor.line].begin() + cursor.linePos, lines[cursor.line].end());
+					lines[cursor.line].erase(lines[cursor.line].begin() + cursor.linePos, lines[cursor.line].end());
+					lines.insert(lines.begin() + cursor.line + 1, endLine);
 					cursor.line++;
 					cursor.linePos = 0;
 					return true;
@@ -392,6 +399,10 @@ namespace edex
 					return typeCharacter(']');
 				else if (key == 93 && shiftHeld)											// Close curly bracket
 					return typeCharacter('}');
+				else if (key == 90 && !shiftHeld)											// Single quote
+					return typeCharacter('\'');
+				else if (key == 90 && shiftHeld)											// "At" symbol
+					return typeCharacter('@');
 			}
 
 			return false;
