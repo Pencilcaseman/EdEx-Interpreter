@@ -220,7 +220,7 @@ namespace edex
 				{
 					std::string endLine(lines[cursor.line].begin() + cursor.linePos, lines[cursor.line].end());
 					lines[cursor.line].erase(lines[cursor.line].begin() + cursor.linePos, lines[cursor.line].end());
-					lines[cursor.line - 1] += endLine; // (lines.begin() + cursor.line, endLine);
+					lines[cursor.line - 1] += endLine;
 
 					lines.erase(lines.begin() + cursor.line, lines.begin() + cursor.line + 1);
 					cursor.line--;
