@@ -1,5 +1,7 @@
 #pragma once
 
+#include "interpreter.h"
+
 namespace edex
 {
 	class IDE;
@@ -33,7 +35,7 @@ namespace edex
 			windows[0].setSyntaxHighlight(true);
 			windows[0].setHighlightRules(generateRules());
 
-			windows[0].setTextScale(1);
+			windows[0].setTextScale(2);
 			windows[0].cursor.active = true;
 
 			return true;

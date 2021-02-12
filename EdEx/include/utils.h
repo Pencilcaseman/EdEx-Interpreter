@@ -9,6 +9,7 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <map>
 
 namespace edex
 {
@@ -17,18 +18,21 @@ namespace edex
 		return (double) std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1000000000;
 	}
 
-	inline std::string substring(const std::string &string, uint32_t start, uint32_t len, bool ignoreWhitespace)
+	inline std::string substring(const std::string &string, uint64_t start, uint64_t len, bool ignoreWhitespace)
 	{
-		uint32_t whitespace = 0;
-
-		if (!ignoreWhitespace)
+		uint64_t whitespace = 0;
+		
+		if (ignoreWhitespace)
 		{
-			whitespace = string.find_first_not_of(' ');
-			if (whitespace == std::string::npos)
-				whitespace = 0;
+			char c = string[whitespace];
+			while (c == ' ')
+			{
+				whitespace++;
+				c = string[whitespace];
+			}
 		}
 
-		std::string res(string.begin() + start + whitespace, string.begin() + start + whitespace + len);
+		std::string res(string.begin() + start + whitespace, string.begin() + std::min(start + whitespace + len, string.length()));
 		return res;
 	}
 
@@ -83,6 +87,15 @@ namespace edex
 		}
 
 		return res;
+	}
+
+	template<typename a, typename b>
+	inline std::pair<bool, b> findInMap(const std::map<a, b> &map, const a &key)
+	{
+		auto it = map.find(key);
+		if (it != map.end())
+			return std::make_pair(true, it->second);
+		return std::make_pair(false, b());
 	}
 }
 

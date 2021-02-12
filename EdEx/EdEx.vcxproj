@@ -154,6 +154,7 @@
     <ClInclude Include="include\cursor.h" />
     <ClInclude Include="include\highlightRule.h" />
     <ClInclude Include="include\ide.h" />
+    <ClInclude Include="include\interpreter.h" />
     <ClInclude Include="include\olcPixelGameEngine.h" />
     <ClInclude Include="include\textWindow.h" />
     <ClInclude Include="include\utils.h" />
