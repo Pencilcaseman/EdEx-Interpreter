@@ -24,7 +24,7 @@ namespace edex
 			ptrIDE = this;
 
 			windows.push_back(TextWindow(0, 0, ScreenWidth(), ScreenHeight(), this));
-			windows[0].setBackground({67, 94, 103});
+			windows[0].setBackground({35, 50, 50});
 			windows[0].setTextColor({204, 204, 204});
 
 			timeOpened = seconds();
