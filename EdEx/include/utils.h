@@ -18,7 +18,7 @@ namespace edex
 		return (double) std::chrono::high_resolution_clock::now().time_since_epoch().count() / 1000000000;
 	}
 
-	inline std::string substring(const std::string &string, uint64_t start, uint64_t len, bool ignoreWhitespace)
+	inline std::string substring(const std::string &string, uint64_t start, uint64_t end, bool ignoreWhitespace)
 	{
 		uint64_t whitespace = 0;
 		
@@ -32,7 +32,7 @@ namespace edex
 			}
 		}
 
-		std::string res(string.begin() + start + whitespace, string.begin() + std::min(start + whitespace + len, string.length()));
+		std::string res(string.begin() + start + whitespace, string.begin() + std::min(end + whitespace, string.length()));
 		return res;
 	}
 
