@@ -19,7 +19,7 @@ namespace edex
 	class Instruction
 	{
 	public:
-		uint64_t scope = -1;
+		uint64_t scope;
 		std::string name;
 		std::vector<std::string> vars;
 		std::vector<std::string> info;
@@ -30,7 +30,7 @@ namespace edex
 					const std::vector<std::string> &lVars,
 					const std::vector<std::string> &lInfo,
 					const std::string &sType) :
-			name(sName), vars(lVars), info(lInfo), typeInfo(sType)
+			name(sName), vars(lVars), info(lInfo), typeInfo(sType), scope(-1)
 		{}
 
 		Instruction(const std::string &sName,
@@ -38,7 +38,7 @@ namespace edex
 					const std::vector<std::string> &lInfo,
 					const std::string &sType,
 					const rapid::ExpressionSolver &cSolver) :
-			name(sName), vars(lVars), info(lInfo), typeInfo(sType), solver(cSolver)
+			name(sName), vars(lVars), info(lInfo), typeInfo(sType), solver(cSolver), scope(-1)
 		{}
 	};
 
@@ -46,8 +46,10 @@ namespace edex
 	{
 	public:
 		std::string line;
+		std::string destination;
 
-		Output(const std::string &out) : line(out)
+		Output(const std::string &out, const std::string &dest) :
+			line(out), destination(dest)
 		{}
 	};
 
@@ -321,8 +323,8 @@ namespace edex
 				}
 				else if (instruction.name == "SEND")
 				{
-					std::cout << "Interpreter Output: " << heap.at(instruction.vars[0])->castToString() << "\n";
-					output.emplace_back(Output(heap.at(instruction.vars[0])->castToString()));
+					std::cout << "Interpreter Output (" << instruction.info[0] << "): " << heap.at(instruction.vars[0])->castToString() << "\n";
+					output.emplace_back(Output(heap.at(instruction.vars[0])->castToString(), instruction.info[0]));
 				}
 			}
 
