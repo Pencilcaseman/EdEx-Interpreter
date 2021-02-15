@@ -15,11 +15,8 @@ int32_t main()
 	std::cout << std::fixed;
 
 	edex::Interpreter testInterpreter({"SET x TO 10",
-									   "SET y TO 20",
-									   "SET xy TO 10 + 20",
-									   "SET pi TO 3.14",
-									   "SET pi2 TO 5 + 3.14",
-									   "SET thing TO x + y"});
+									   "SET y TO x / 3",
+									   "SEND y TO DISPLAY"});
 
 	auto start = edex::seconds();
 	testInterpreter.compile();
@@ -49,6 +46,9 @@ int32_t main()
 	start = edex::seconds();
 	testInterpreter.interpret();
 	end = edex::seconds();
+
+	std::cout << "\n\n\n";
+
 	std::cout << "Time: " << end - start << " seconds\n";
 
 	for (const auto &variable : testInterpreter.heap)

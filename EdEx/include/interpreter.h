@@ -19,14 +19,35 @@ namespace edex
 	class Instruction
 	{
 	public:
-		uint64_t scope;
+		uint64_t scope = -1;
 		std::string name;
 		std::vector<std::string> vars;
 		std::vector<std::string> info;
 		std::string typeInfo;
 		rapid::ExpressionSolver solver;
 
-		Instruction(const std::string &sName, const std::vector<std::string> &lVars, const std::vector<std::string> &lInfo, const std::string &sType, const rapid::ExpressionSolver &cSolver) : name(sName), vars(lVars), info(lInfo), typeInfo(sType), solver(cSolver)
+		Instruction(const std::string &sName,
+					const std::vector<std::string> &lVars,
+					const std::vector<std::string> &lInfo,
+					const std::string &sType) :
+			name(sName), vars(lVars), info(lInfo), typeInfo(sType)
+		{}
+
+		Instruction(const std::string &sName,
+					const std::vector<std::string> &lVars,
+					const std::vector<std::string> &lInfo,
+					const std::string &sType,
+					const rapid::ExpressionSolver &cSolver) :
+			name(sName), vars(lVars), info(lInfo), typeInfo(sType), solver(cSolver)
+		{}
+	};
+
+	class Output
+	{
+	public:
+		std::string line;
+
+		Output(const std::string &out) : line(out)
 		{}
 	};
 
@@ -113,6 +134,7 @@ namespace edex
 		std::vector<Instruction> compiled;
 
 		std::map<std::string, std::shared_ptr<Object>> heap;
+		std::vector<Output> output;
 
 		std::vector<std::string> operatorSplit = {" ", "(", ")", "+", "-", "*", "/", "^", "%"};
 
@@ -140,10 +162,14 @@ namespace edex
 				bool foundFloat = false;
 				bool foundString = false;
 				bool foundVariable = false;
+				bool foundDivision = false;
 
 				for (const auto &val : split)
 				{
 					// Check it is not a delimiter
+					if (val == "/")
+						foundDivision = true;
+
 					if (std::find(operatorSplit.begin(), operatorSplit.end(), val) != operatorSplit.end())
 						continue;
 
@@ -166,8 +192,11 @@ namespace edex
 				if (foundString)
 					return ResultContainer("No support for string math yet", 0, 0, true);
 
-				if (foundInt && !foundFloat)
+				if (foundInt && !foundFloat && !foundDivision)
 					return ResultContainer("int", 0, 0, false);
+
+				if (foundInt && !foundFloat && foundDivision)
+					return ResultContainer("float", 0, 0, false);
 
 				if (foundFloat)
 					return ResultContainer("float", 0, 0, false);
@@ -210,6 +239,23 @@ namespace edex
 			return ResultContainer("", 0, 0, false);
 		}
 
+		inline ResultContainer parseSendTo(const std::string &line)
+		{
+			// Parse "SEND x TO y"
+
+			std::string value;
+			std::string destination;
+
+			uint64_t to = line.find("TO");
+
+			value = substring(line, 5, to - 1, true);
+			destination = substring(line, to + 3, line.length(), true);
+
+			compiled.emplace_back(Instruction("SEND", {value}, {destination}, ""));
+
+			return ResultContainer("", 0, 0, false);
+		}
+
 		inline std::shared_ptr<Object> calculateExpression(rapid::ExpressionSolver &solver, const std::map<std::string, std::shared_ptr<Object>> variables, const std::string &type) const
 		{
 			// Process the data to insert variable values
@@ -244,10 +290,19 @@ namespace edex
 
 			for (const auto &line : programString)
 			{
-				// Check for "SET x TO y"
 				if (substring(line, 0, 3, true) == "SET")
 				{
+					// Check for "SET x TO y"
+
 					auto result = parseSetVar(line);
+					if (result.isError)
+						return result;
+				}
+				else if (substring(line, 0, 4, true) == "SEND")
+				{
+					// Check for "SEND x TO y"
+
+					auto result = parseSendTo(line);
 					if (result.isError)
 						return result;
 				}
@@ -261,7 +316,14 @@ namespace edex
 			for (auto &instruction : compiled)
 			{
 				if (instruction.name == "SET")
+				{
 					heap[instruction.vars[0]] = calculateExpression(instruction.solver, heap, instruction.typeInfo);
+				}
+				else if (instruction.name == "SEND")
+				{
+					std::cout << "Interpreter Output: " << heap.at(instruction.vars[0])->castToString() << "\n";
+					output.emplace_back(Output(heap.at(instruction.vars[0])->castToString()));
+				}
 			}
 
 			return ResultContainer("", 0, 0., false);
