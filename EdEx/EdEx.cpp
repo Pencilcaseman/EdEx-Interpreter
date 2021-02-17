@@ -15,8 +15,9 @@ int32_t main()
 	std::cout << std::fixed;
 	std::cout.precision(10);
 
-	edex::Interpreter testInterpreter({"SET value TO 5 + 5 - 3 * 10 / 123",
-									   "SEND value TO DISPLAY"});
+	edex::Interpreter testInterpreter({"SET x TO \"HELLO\"",
+									   "SEND x TO DISPLAY",
+									   "SEND x & \"THERE\" TO DISPLAY"});
 
 	auto start = edex::seconds();
 	auto compilerOutput = testInterpreter.compile();

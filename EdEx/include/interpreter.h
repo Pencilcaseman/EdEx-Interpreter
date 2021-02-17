@@ -226,20 +226,20 @@ namespace edex
 						return ResultContainer("Invalid Expression", 0, 0, true);
 				}
 
-				if (foundString)
-					return ResultContainer("No support for string math yet", 0, 0, true);
-
 				if (foundInt && !foundFloat && !foundDivision)
-					return ResultContainer("int", 0, 0, false);
+					return ResultContainer("int", 0, 0., false);
 
 				if (foundInt && !foundFloat && foundDivision)
-					return ResultContainer("float", 0, 0, false);
+					return ResultContainer("float", 0, 0., false);
 
 				if (foundFloat)
-					return ResultContainer("float", 0, 0, false);
+					return ResultContainer("float", 0, 0., false);
+
+				if (foundString)
+					return ResultContainer("string", 0, 0., false);
 
 				if (foundVariable)
-					return ResultContainer("variable", 0, 0, false);
+					return ResultContainer("variable", 0, 0., false);
 			}
 
 			return ResultContainer("Unknown Type", 0, 0, true);
@@ -305,7 +305,7 @@ namespace edex
 					else
 					{
 						bool isVariable = false;
-						
+
 						for (const auto &variable : heap)
 						{
 							if (variable.first == val)
