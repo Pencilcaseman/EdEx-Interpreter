@@ -35,6 +35,7 @@ namespace edex
 			windows[0].setHighlightRules(generateRules());
 
 			windows[0].setTextScale(2);
+			windows[0].setRenderBackground(false);
 			windows[0].cursor.active = true;
 
 			return true;

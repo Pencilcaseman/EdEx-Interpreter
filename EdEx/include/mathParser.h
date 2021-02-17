@@ -44,7 +44,8 @@ namespace rapid
 			start = end + 1;
 		}
 
-		res.emplace_back(std::string(string.begin() + start, string.end()));
+		if (start < string.length())
+			res.emplace_back(std::string(string.begin() + start, string.end()));
 
 		return res;
 	}
@@ -89,7 +90,8 @@ namespace rapid
 		std::vector<std::string> postfix;
 		std::vector<std::pair<double, std::string>> processed;
 
-		std::vector<std::string> splitBy = {" ", "(", ")", "+", "-", "*", "/", "^", "%"};
+		// std::vector<std::string> splitBy = {" ", "(", ")", "+", "-", "*", "/", "^", "%"};
+		std::vector<std::string> splitBy = {" ", "(", ")", ">", "<", "=", "!", "+", "-", "*", "/", "^", "%"};
 		std::unordered_map<std::string, double> variables;
 
 		// Basic math operations
@@ -153,7 +155,7 @@ namespace rapid
 			bool append = false;
 			for (const auto &term : splitString(expression, splitBy))
 			{
-				if (term != " " && term != "")
+				if (term != " " && !term.empty())
 				{
 					if (!append)
 						infix.emplace_back(term);
@@ -165,13 +167,64 @@ namespace rapid
 
 					if (i == 0 && (term == "+" || term == "-"))
 						append = true;
-					// else if (i > 1 && (term == "+" || term == "-") && ((infix[i - 1] == "+" || infix[i - 1] == "-")))
 					else if (i > 1 && (term == "+" || term == "-") && (std::find(operators.end() - 6, operators.end(), infix[infix.size() - 2]) != operators.end()))
 						append = true;
 
 					i++;
 				}
 			}
+		}
+
+		inline void processInfix()
+		{
+			std::vector<std::string> newInfix;
+
+			for (uint64_t i = 0; i < infix.size(); i++)
+			{
+				bool modified = false;
+
+				if (infix[i] == ">")
+				{
+					if (i < infix.size() - 1 && infix[i + 1] == "=")
+					{
+						newInfix.emplace_back(">=");
+						modified = true;
+						i++;
+					}
+					else
+					{
+						newInfix.emplace_back(">");
+						modified = true;
+					}
+				}
+
+				if (infix[i] == "<")
+				{
+					if (i < infix.size() - 1 && infix[i + 1] == "=")
+					{
+						newInfix.emplace_back("<=");
+						modified = true;
+						i++;
+					}
+					else
+					{
+						newInfix.emplace_back("<");
+						modified = true;
+					}
+				}
+
+				if (i < infix.size() - 1 && infix[i] == "!" && infix[i + 1] == "=")
+				{
+					newInfix.emplace_back(">=");
+					modified = true;
+					i++;
+				}
+
+				if (!modified)
+					newInfix.emplace_back(infix[i]);
+			}
+
+			infix = newInfix;
 		}
 
 		inline void infixToPostfix()
@@ -188,7 +241,7 @@ namespace rapid
 					stack.push(token);
 				else if (token == ")")
 				{
-					while (stack.size() > 0 && stack.top() != "(")
+					while (!stack.empty() && stack.top() != "(")
 					{
 						postfix.emplace_back(stack.top());
 						stack.pop();
@@ -197,7 +250,7 @@ namespace rapid
 				}
 				else
 				{
-					while (stack.size() > 0 && std::find(operators.begin(), operators.end(), token) >= std::find(operators.begin(), operators.end(), stack.top()))
+					while (!stack.empty() && std::find(operators.begin(), operators.end(), token) >= std::find(operators.begin(), operators.end(), stack.top()))
 					{
 						postfix.emplace_back(stack.top());
 						stack.pop();
@@ -206,7 +259,7 @@ namespace rapid
 				}
 			}
 
-			while (stack.size() > 0)
+			while (!stack.empty() > 0)
 			{
 				postfix.emplace_back(stack.top());
 				stack.pop();
@@ -284,7 +337,7 @@ namespace rapid
 						}
 					}
 
-					if (stack.size() > 0 && !evaluated)
+					if (!stack.empty() && !evaluated)
 					{
 						a = stack.top(); stack.pop();
 
@@ -318,6 +371,31 @@ namespace rapid
 							stack.push(std::fmod(a, b));
 							evaluated = true;
 						}
+						else if (term.second == ">")
+						{
+							stack.push(a > b);
+							evaluated = true;
+						}
+						else if (term.second == "<")
+						{
+							stack.push(a < b);
+							evaluated = true;
+						}
+						else if (term.second == ">=")
+						{
+							stack.push(a >= b);
+							evaluated = true;
+						}
+						else if (term.second == "<=")
+						{
+							stack.push(a <= b);
+							evaluated = true;
+						}
+						else if (term.second == "!=")
+						{
+							stack.push(a != b);
+							evaluated = true;
+						}
 						else
 						{
 							errorOccured = true;
@@ -341,6 +419,7 @@ namespace rapid
 		inline void compile()
 		{
 			expressionToInfix();
+			processInfix();
 			infixToPostfix();
 			postfixProcess();
 		}

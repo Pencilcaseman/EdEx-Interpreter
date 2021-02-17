@@ -12,6 +12,7 @@ namespace edex
 		virtual inline int64_t castToInt() const = 0;
 		virtual inline double castToFloat() const = 0;
 		virtual inline std::string castToString() const = 0;
+		virtual inline bool castToBool() const = 0;
 
 		virtual std::string getType() const = 0;
 	};
@@ -22,6 +23,9 @@ namespace edex
 		int64_t value;
 
 		EdExInt(int64_t val) : value(val)
+		{}
+
+		EdExInt(const double &val) : value((double) val)
 		{}
 
 		EdExInt(const std::string &val) : value(std::stoll(val))
@@ -42,6 +46,11 @@ namespace edex
 			return std::to_string(value);
 		}
 
+		bool castToBool() const override
+		{
+			return value;
+		}
+
 		std::string getType() const override
 		{
 			return "int";
@@ -53,6 +62,9 @@ namespace edex
 	public:
 		double value;
 
+		EdExFloat(int64_t val) : value((double) val)
+		{}
+		
 		EdExFloat(double val) : value(val)
 		{}
 
@@ -74,6 +86,11 @@ namespace edex
 			return std::to_string(value);
 		}
 
+		bool castToBool() const override
+		{
+			return value;
+		}
+
 		std::string getType() const override
 		{
 			return "float";
@@ -85,6 +102,12 @@ namespace edex
 	public:
 		std::string value;
 
+		EdExString(const int64_t &val) : value(std::to_string(val))
+		{}
+
+		EdExString(const double &val) : value(std::to_string(val))
+		{}
+		
 		EdExString(const std::string &val) : value(val)
 		{}
 
@@ -103,9 +126,50 @@ namespace edex
 			return value;
 		}
 
+		bool castToBool() const override
+		{
+			if (value == "TRUE")
+				return true;
+			return false;
+		}
+
 		std::string getType() const override
 		{
 			return "string";
+		}
+	};
+
+	class EdExBool : public Object
+	{
+	public:
+		bool value;
+
+		EdExBool(const bool &val) : value(val)
+		{}
+
+		int64_t castToInt() const override
+		{
+			return value;
+		}
+
+		double castToFloat() const override
+		{
+			return (double) value;
+		}
+
+		std::string castToString() const override
+		{
+			return value ? "TRUE" : "FALSE";
+		}
+
+		bool castToBool() const override
+		{
+			return value;
+		}
+
+		std::string getType() const override
+		{
+			return "bool";
 		}
 	};
 
@@ -171,22 +235,49 @@ namespace edex
 		std::map<std::string, std::shared_ptr<Object>> heap;
 		std::vector<Output> output;
 
-		std::vector<std::string> operatorSplit = {" ", "(", ")", "+", "-", "*", "/", "^", "%", "&"};
+		std::vector<std::string> operatorSplit = {" ", "(", ")", "+", "-", "*", "/", "^", "%", "&", "<", ">", "="};
 
 		Interpreter() = default;
 
 		Interpreter(const std::vector<std::string> &toRun) : programString(toRun)
 		{}
 
-		inline ResultContainer extractType(const std::string &term, bool ignoreStageTwo = false, bool foundQuote = false) const
+		template<typename t>
+		inline std::shared_ptr<Object> createObject(const t &val, const std::string &type) const
 		{
+			if (type == "int")
+				return std::make_shared<EdExInt>(val);
+			if (type == "float")
+				return std::make_shared<EdExFloat>(val);
+			if (type == "string")
+				return std::make_shared<EdExString>(val);
+			if (type == "bool")
+				return std::make_shared<EdExBool>(val);
+		}
+
+		inline ResultContainer extractType(const std::string &term, const std::map<std::string, std::shared_ptr<Object>> &variables = {}, bool ignoreStageTwo = false, bool foundQuote = false) const
+		{
+			if (term.empty())
+				return ResultContainer("NONE", 0, 0., false);
+
 			auto stringEnd = term.length() - 1;
 			if (rapid::isnum(term) && term.find_first_of('.') == std::string::npos)
 				return ResultContainer("int", 0, 0, false);      // Integer
 			if (rapid::isnum(term))
 				return ResultContainer("float", 0, 0, false);    // Float
-			if (rapid::isalphanum(term))
-				return ResultContainer("variable", 0, 0, false); // Miscellaneous variable 
+			if (term == "TRUE" || term == "FALSE")
+				return ResultContainer("bool", 0, 0, false);	 // Boolean
+
+			if (rapid::isalphanum(term))						 // Variable
+			{
+				// Search variables
+				for (const auto &variable : variables)
+					if (term == variable.first)
+						return ResultContainer(variable.second->getType(), 0, 0., false);
+
+				return ResultContainer("variable", 0, 0, false);
+			}
+
 			if ((term[0] == term[stringEnd] || foundQuote) && (term[stringEnd] == '\"' || term[stringEnd] == '\''))
 				return ResultContainer("string", 0, 0, false);   // String
 
@@ -197,6 +288,7 @@ namespace edex
 				bool valid = true;
 				bool foundInt = false;
 				bool foundFloat = false;
+				bool foundBool = false;
 				bool foundString = false;
 				bool foundVariable = false;
 				bool foundDivision = false;
@@ -215,7 +307,7 @@ namespace edex
 					if (std::find(operatorSplit.begin(), operatorSplit.end(), val) != operatorSplit.end())
 						continue;
 
-					auto res = extractType(val, true, foundQuote);
+					auto res = extractType(val, variables, true, foundQuote);
 					if (res.isError)
 						return res;
 
@@ -223,14 +315,13 @@ namespace edex
 						foundInt = true;
 					else if (res.infoString == "float")
 						foundFloat = true;
+					else if (res.infoString == "bool")
+						foundBool = true;
 					else if (res.infoString == "string")
-					{
 						foundString = true;
-						// foundQuote = false;
-					}
 					else if (res.infoString == "variable")
 						foundVariable = true;
-					else
+					else if (res.infoString != "NONE")
 						return ResultContainer("Invalid Expression", 0, 0, true);
 				}
 
@@ -243,11 +334,21 @@ namespace edex
 				if (foundFloat && !foundString)
 					return ResultContainer("float", 0, 0., false);
 
+				if (foundBool)
+					return ResultContainer("bool", 0, 0., false);
+
 				if (foundString)
 					return ResultContainer("string", 0, 0., false);
 
 				if (foundVariable)
+				{
+					// Search variables
+					for (const auto &variable : variables)
+						if (term == variable.first)
+							return ResultContainer(variable.second->getType(), 0, 0., false);
+
 					return ResultContainer("variable", 0, 0., false);
+				}
 			}
 
 			return ResultContainer("Unknown Type or Syntax", 0, 0, true);
@@ -372,6 +473,109 @@ namespace edex
 			return ResultContainer("", 0, 0., std::make_shared<EdExString>(res), false);
 		}
 
+		inline ResultContainer evaluateEquality(const double &lhs, const double &rhs, const std::string &op) const
+		{
+			// Evaluate the result of a binary operation
+			// E.g. x > y
+			// E.g. a <> b
+
+					// Compare values
+			if (op == "=")
+				return ResultContainer("", lhs == rhs, 0., false);
+			if (op == "<")
+				return ResultContainer("", lhs < rhs, 0., false);
+			if (op == ">")
+				return ResultContainer("", lhs > rhs, 0., false);
+			if (op == "<=")
+				return ResultContainer("", lhs <= rhs, 0., false);
+			if (op == ">=")
+				return ResultContainer("", lhs >= rhs, 0., false);
+			if (op == "<>")
+				return ResultContainer("", lhs != rhs, 0., false);
+
+			return ResultContainer("Invalid Operation: " + op, 0, 0., true);
+		}
+
+		inline ResultContainer evaluateBooleanExpression(const std::string &string) const
+		{
+			// Search for value
+			if (string == "TRUE")
+				return ResultContainer("", 0, 0., std::make_shared<EdExBool>(1), false);
+			if (string == "FALSE")
+				return ResultContainer("", 0, 0., std::make_shared<EdExBool>(0), false);
+
+			// Search for variable
+			for (const auto &var : heap)
+				if (string == var.first)
+					return ResultContainer("", 0, 0., var.second, false);
+
+			auto split = rapid::splitString(string, operatorSplit);
+
+			// Search for an operator
+			std::string operation;
+			uint64_t operatorsFound = 0;
+			for (uint64_t i = 0; i < split.size() - 1; i++)
+			{
+				bool found = false;
+				auto len = operation.size();
+
+				// Check for the main token segment
+				if (split[i] == ">" || split[i] == "<" || split[i] == "=")
+				{
+					operation += split[i]; found = true;
+					operatorsFound++;
+				}
+
+				// Check for the (potential) second part of the token segment
+				if (found && (split[i + 1] == ">" || split[i + 1] == "="))
+				{
+					operation += split[i + 1];
+				}
+
+				if (operatorsFound > 1)
+					return ResultContainer("Cannot have multiple conditional operators in one expression", 0, 0., true);
+			}
+
+			if (operatorsFound == 0)
+			{
+				auto spaceEnd = string.find_first_not_of(' ');
+				auto spaceStart = string.find_last_not_of(' ');
+
+				if (spaceEnd == std::string::npos) spaceEnd = 0;
+
+				if (spaceStart != std::string::npos && spaceStart < string.length() - 1) spaceStart++;
+				else spaceStart = 0;
+
+				auto solver = rapid::ExpressionSolver(std::string(string.begin() + spaceEnd, string.end() - spaceStart));
+				solver.compile();
+				return calculateExpression(solver, heap, extractType(string, heap).infoString);
+			}
+
+			auto lhsString = std::string(string.begin(), string.begin() + string.find(operation));
+			auto rhsString = std::string(string.begin() + string.find(operation) + operation.length(), string.end());
+
+			std::cout << "Left: " << lhsString << "\n";
+			std::cout << "Right: " << rhsString << "\n";
+
+			auto lhsSolver = rapid::ExpressionSolver(lhsString);
+			auto rhsSolver = rapid::ExpressionSolver(rhsString);
+
+			lhsSolver.compile(); rhsSolver.compile();
+
+			std::string lhsType = extractType(lhsString, heap).infoString;
+			std::string rhsType = extractType(rhsString, heap).infoString;
+
+			auto lhsRes = calculateExpression(lhsSolver, heap, lhsType);
+			auto rhsRes = calculateExpression(rhsSolver, heap, rhsType);
+
+			std::cout << "Left res: " << lhsRes.objPtr->castToString() << "\n";
+			std::cout << "Right res: " << rhsRes.objPtr->castToString() << "\n";
+
+			auto res = evaluateEquality(lhsRes.infoDouble, rhsRes.infoDouble, operation);
+
+			return ResultContainer("", 0, 0., std::make_shared<EdExBool>(res.infoDouble), false);
+		}
+
 		inline ResultContainer parseSetVar(const std::string &line)
 		{
 			// Parse "SET x TO y"
@@ -387,8 +591,8 @@ namespace edex
 			auto assignTypeContainer = extractType(expression);
 			if (assignTypeContainer.isError)
 				return assignTypeContainer;
-			else
-				assignType = assignTypeContainer.infoString;
+
+			assignType = assignTypeContainer.infoString;
 
 			auto solver = rapid::ExpressionSolver(expression);
 			solver.expressionToInfix();
@@ -398,6 +602,8 @@ namespace edex
 			if (assignType == "int" || assignType == "float" || assignType == "string")
 				compiled.emplace_back(Instruction("SET", {variable}, {}, assignType, solver));
 			else if (assignType == "variable")
+				compiled.emplace_back(Instruction("SET", {variable, expression}, {}, assignType, solver));
+			else if (assignType == "bool")
 				compiled.emplace_back(Instruction("SET", {variable, expression}, {}, assignType, solver));
 			else
 				return ResultContainer("Unknown assignment type", 0, 0, true);
@@ -433,15 +639,13 @@ namespace edex
 		{
 			// Process the data to insert variable values
 			bool foundString = false;
+			bool foundBool = false;
 			bool foundQuote = false;
 			uint64_t index = 0;
 
-			if (type == "variable")
-				int x = 5;
-
 			for (auto &val : solver.processed)
 			{
-				if (!val.second.empty())
+				if (!val.second.empty()) // Not a numeric type
 				{
 					bool found = false;
 
@@ -467,21 +671,56 @@ namespace edex
 						}
 					}
 
-					if (!found)
+					if (!found) // Not a simple string type
 					{
+						// if (val.second == ">" || val.second == "<" || val.second == "=")
+						// 	foundBool = true;
+
 						if (std::find(operatorSplit.begin(), operatorSplit.end(), val.second) != operatorSplit.end() || foundString)
 							continue;
 
-						if (variables.at(val.second)->getType() != "string")
+						// Check for boolean value
+						if (val.second == "TRUE" || val.second == "FALSE")
 						{
-							val.first = variables.at(val.second)->castToFloat();
+							foundBool = true;
+							val.first = val.second == "TRUE";
 							val.second = "";
 						}
 						else
 						{
-							foundString = true;
-							val.first = 0;
-							val.second = variables.at(val.second)->castToString();
+							bool varExists = false;
+							for (const auto &var : heap)
+							{
+								if (var.first == val.second)
+								{
+									varExists = true; break;
+								}
+							}
+
+							if (!varExists)
+								return ResultContainer("Variable Not Found: " + val.second, 0, 0., true);
+
+							auto variableType = variables.at(val.second)->getType();
+							if (variableType != "string")
+							{
+								if (variableType == "bool")
+								{
+									foundBool = true;
+									val.first = val.second == "TRUE";
+									val.second = "";
+								}
+								else
+								{
+									val.first = variables.at(val.second)->castToFloat();
+									val.second = "";
+								}
+							}
+							else
+							{
+								foundString = true;
+								val.first = 0;
+								val.second = variables.at(val.second)->castToString();
+							}
 						}
 					}
 				}
@@ -490,18 +729,39 @@ namespace edex
 			}
 
 			if (foundString)
-			{
 				return evaluateStringExpression(solver.expression);
-			}
 
+			if (foundBool || type == "bool")
+				return evaluateBooleanExpression(solver.expression);
+
+			// ====================================================================
+			for (const auto &variable : variables)
+			{
+				solver.variables[variable.first] = variable.second->castToFloat();
+			}
+			// ====================================================================
+
+			solver.compile();
 			auto res = solver.eval();
 
 			if (type == "int")
-				return ResultContainer("int", 0, res, std::make_shared<EdExInt>((int64_t) res), false); // std::make_shared<EdExInt>((int64_t) res);
+				return ResultContainer("int", 0, res, std::make_shared<EdExInt>((int64_t) res), false);
 			if (type == "float")
-				return ResultContainer("float", 0, res, std::make_shared<EdExFloat>(res), false);  // std::make_shared<EdExFloat>(res);
+				return ResultContainer("float", 0, res, std::make_shared<EdExFloat>(res), false);
 			if (type == "variable")
 			{
+				auto resType = extractType(solver.expression, variables);
+
+				if (resType.isError)
+					return ResultContainer("Invalid Syntax. Unable to evaluate expression", 0, 0., true);
+
+				if (resType.infoString != type)
+				{
+					if (foundBool)
+						return ResultContainer(resType.infoString, 0, res, createObject(res, "bool"), false);
+					return ResultContainer(resType.infoString, 0, res, createObject(res, resType.infoString), false);
+				}
+
 				auto &var = variables.at(solver.expression);
 				return ResultContainer(var->getType(), 0, res, var, false);
 			}
@@ -567,6 +827,8 @@ namespace edex
 					{
 						output.emplace_back(Output(heap.at(instruction.vars[0])->castToString(), instruction.info[0]));
 					}
+
+					std::cout << "Interpreter Output: " << output[output.size() - 1].line << "\n";
 				}
 			}
 

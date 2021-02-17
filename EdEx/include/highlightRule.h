@@ -50,6 +50,9 @@ namespace edex
 		rules.push_back(Rule{"", {{"LENGTH", {229, 92, 68}}}, true});
 		rules.push_back(Rule{"", {{"ELSE", {109, 116, 189}}}, true});
 
+		rules.push_back(Rule{"", {{"TRUE", {104, 255, 92}}}, true});
+		rules.push_back(Rule{"", {{"FALSE", {241, 93, 255}}}, true});
+
 		return {delimiters, rules};
 	}
 }

@@ -8,20 +8,28 @@ int32_t main()
 	std::cout.precision(10);
 
 	edex::Interpreter testInterpreter({
-		"SET x TO \" HELLO\"",
-		"SET y TO \" THERE\"",
-		"SET z TO \" BOB!\"",
-		"SET xy TO x & y",
-		"SET xyz TO x & y & z",
-		"SET xy2 TO \" HELLO\" & \" THERE\"",
-		"SET xyz2 TO \" HELLO\" & \" THERE\" & \" BOB!\"",
+		// "SET x TO \" HELLO\"",
+		// "SET y TO \" THERE\"",
+		// "SET z TO \" BOB!\"",
+		// "SET xy TO x & y",
+		// "SET xyz TO x & y & z",
+		// "SET xy2 TO \" HELLO\" & \" THERE\"",
+		// "SET xyz2 TO \" HELLO\" & \" THERE\" & \" BOB!\"",
+		// "SEND x TO DISPLAY",
+		// "SEND y TO DISPLAY",
+		// "SEND z TO DISPLAY",
+		// "SEND xy TO DISPLAY",
+		// "SEND xyz TO DISPLAY",
+		// "SEND xy2 TO DISPLAY",
+		// "SEND xyz2 TO DISPLAY",
+		// "SEND \"\n\n\n\" TO DISPLAY",
+		// 
+
+		"SET x TO 5",
+		"SET y TO 10",
 		"SEND x TO DISPLAY",
 		"SEND y TO DISPLAY",
-		"SEND z TO DISPLAY",
-		"SEND xy TO DISPLAY",
-		"SEND xyz TO DISPLAY",
-		"SEND xy2 TO DISPLAY",
-		"SEND xyz2 TO DISPLAY"
+		"SEND x > y TO DISPLAY"
 									  });
 
 	auto start = edex::seconds();
@@ -73,9 +81,9 @@ int32_t main()
 		std::cout << ">>> " << out.line << "\n";
 	}
 
-	// auto ide = edex::IDE();
-	// ide.Construct(1200, 800, 1, 1);
-	// ide.Start();
+// 	auto ide = edex::IDE();
+// 	ide.Construct(1200, 800, 1, 1);
+// 	ide.Start();
 
 	return 0;
 }

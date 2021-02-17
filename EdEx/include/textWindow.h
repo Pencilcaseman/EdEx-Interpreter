@@ -23,6 +23,7 @@ namespace edex
 		olc::Pixel background;
 		olc::Pixel textColor;
 		int32_t textScale;
+		bool renderBackground = true;
 
 		// Graphics window the text is in
 		olc::PixelGameEngine *window = nullptr;
@@ -67,6 +68,11 @@ namespace edex
 		inline void setHighlightRules(const Rules &rules)
 		{
 			highlightRules = rules;
+		}
+
+		inline void setRenderBackground(const bool &shouldRender)
+		{
+			renderBackground = shouldRender;
 		}
 
 		inline std::vector<std::pair<std::string, olc::Pixel>> highlightLine(const std::string line)
@@ -129,16 +135,19 @@ namespace edex
 
 		bool render(olc::PixelGameEngine *window)
 		{
-			// Draw the background
 			int32_t drawOriginX = std::max(originX, 0);
 			int32_t drawOriginY = std::max(originY, 0);
 			int32_t drawWidth = std::min(originX + width, window->ScreenWidth());
 			int32_t drawHeight = std::min(originY + height, window->ScreenHeight());
 
-			if (drawOriginX == 0 && drawOriginY == 0 && drawWidth == window->ScreenWidth() && drawHeight == window->ScreenHeight())
-				window->Clear(background);
-			else
-				window->FillRect(drawOriginX, drawOriginY, drawWidth, drawHeight, background);
+			if (renderBackground)
+			{
+				// Draw the background
+				if (drawOriginX == 0 && drawOriginY == 0 && drawWidth == window->ScreenWidth() && drawHeight == window->ScreenHeight())
+					window->Clear(background);
+				else
+					window->FillRect(drawOriginX, drawOriginY, drawWidth, drawHeight, background);
+			}
 
 			// Draw the lines of text on the screen
 			for (size_t i = 0; i < lines.size(); i++)
