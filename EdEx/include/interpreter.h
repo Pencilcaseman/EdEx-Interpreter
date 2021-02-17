@@ -178,15 +178,16 @@ namespace edex
 		Interpreter(const std::vector<std::string> &toRun) : programString(toRun)
 		{}
 
-		inline ResultContainer extractType(const std::string &term, bool ignoreStageTwo = false) const
+		inline ResultContainer extractType(const std::string &term, bool ignoreStageTwo = false, bool foundQuote = false) const
 		{
+			auto stringEnd = term.length() - 1;
 			if (rapid::isnum(term) && term.find_first_of('.') == std::string::npos)
 				return ResultContainer("int", 0, 0, false);      // Integer
 			if (rapid::isnum(term))
 				return ResultContainer("float", 0, 0, false);    // Float
 			if (rapid::isalphanum(term))
 				return ResultContainer("variable", 0, 0, false); // Miscellaneous variable 
-			if (term[0] == term[term.length() - 1] && (term[0] == '\"' || term[0] == '\''))
+			if ((term[0] == term[stringEnd] || foundQuote) && (term[stringEnd] == '\"' || term[stringEnd] == '\''))
 				return ResultContainer("string", 0, 0, false);   // String
 
 			if (!ignoreStageTwo)
@@ -205,11 +206,16 @@ namespace edex
 					// Check it is not a delimiter
 					if (val == "/")
 						foundDivision = true;
+					else if (val == "\"" || val == "\'")
+					{
+						foundQuote = true;
+						continue;
+					}
 
 					if (std::find(operatorSplit.begin(), operatorSplit.end(), val) != operatorSplit.end())
 						continue;
 
-					auto res = extractType(val, true);
+					auto res = extractType(val, true, foundQuote);
 					if (res.isError)
 						return res;
 
@@ -218,20 +224,23 @@ namespace edex
 					else if (res.infoString == "float")
 						foundFloat = true;
 					else if (res.infoString == "string")
+					{
 						foundString = true;
+						// foundQuote = false;
+					}
 					else if (res.infoString == "variable")
 						foundVariable = true;
 					else
 						return ResultContainer("Invalid Expression", 0, 0, true);
 				}
 
-				if (foundInt && !foundFloat && !foundDivision)
+				if (foundInt && !foundFloat && !foundDivision && !foundString)
 					return ResultContainer("int", 0, 0., false);
 
-				if (foundInt && !foundFloat && foundDivision)
+				if (foundInt && !foundFloat && foundDivision && !foundString)
 					return ResultContainer("float", 0, 0., false);
 
-				if (foundFloat)
+				if (foundFloat && !foundString)
 					return ResultContainer("float", 0, 0., false);
 
 				if (foundString)
@@ -258,11 +267,16 @@ namespace edex
 			bool isConcatenate = true;
 			bool foundQuote = false;
 			bool addSpace = false;
+			bool isVariable = false;
 
 			uint64_t index = 0;
-			for (const auto &val : split)
+			for (auto &val : split)
 			{
+				isVariable = false;
+
 				if (val.empty())
+					continue;
+				if (val == " ")
 					continue;
 
 				if (val == "\"" || val == "\'")
@@ -273,21 +287,38 @@ namespace edex
 				{
 					bool valid = false;
 
+					// Search variables
+					for (const auto &var : heap)
+					{
+						if (val == var.first)
+						{
+							val = var.second->castToString();
+							isVariable = true;
+							valid = true;
+							addSpace = false;
+							break;
+						}
+					}
+
 					if (val[0] == val[val.length() - 1] && (val[0] == '\"' || val[0] == '\''))
 						valid = true;
 					else if ((val[val.length() - 1] == '\"' || val[val.length() - 1] == '\'') && foundQuote)
 					{
 						valid = true;
 						addSpace = true;
+						isConcatenate = true;
 					}
 					else
 					{
-						for (uint64_t i = index; i < split.size(); i++)
+						if (val != "&")
 						{
-							if (split[i] == "\"" || split[i] == "\'")
+							for (uint64_t i = index; i < split.size(); i++)
 							{
-								valid = true;
-								addSpace = true;
+								if (split[i] == "\"" || split[i] == "\'")
+								{
+									valid = true;
+									addSpace = true;
+								}
 							}
 						}
 					}
@@ -296,7 +327,7 @@ namespace edex
 					{
 						if (addSpace && index > 0)
 							res += " ";
-						res += substring(val, !foundQuote, val.length() - (val[val.length() - 1] == '\"' || val[val.length() - 1] == '\''), false);
+						res += substring(val, isVariable ? 0 : !foundQuote, val.length() - (val[val.length() - 1] == '\"' || val[val.length() - 1] == '\''), false);
 						isConcatenate = false;
 						foundQuote = false;
 						addSpace = false;
@@ -321,12 +352,13 @@ namespace edex
 							}
 						}
 
-						if (val[0] == '&' && !isVariable)
+						if (val[0] == '&') // && !isVariable)
 						{
 							if (isConcatenate)
 								return ResultContainer("Invalid Syntax", 0, 0., true);
 							isConcatenate = true;
 							foundQuote = false;
+							addSpace = false;
 						}
 					}
 				}
@@ -469,7 +501,10 @@ namespace edex
 			if (type == "float")
 				return ResultContainer("float", 0, res, std::make_shared<EdExFloat>(res), false);  // std::make_shared<EdExFloat>(res);
 			if (type == "variable")
-				int x = 0; // DO SOMETHING HERE
+			{
+				auto &var = variables.at(solver.expression);
+				return ResultContainer(var->getType(), 0, res, var, false);
+			}
 
 			return ResultContainer("Invalid Syntax. Unable to evaluate expression", 0, 0., true);
 		}
@@ -532,8 +567,6 @@ namespace edex
 					{
 						output.emplace_back(Output(heap.at(instruction.vars[0])->castToString(), instruction.info[0]));
 					}
-
-					std::cout << "Interpreter output: " << output[output.size() - 1].line << "\n";
 				}
 			}
 

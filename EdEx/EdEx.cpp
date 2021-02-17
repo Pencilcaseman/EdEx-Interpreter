@@ -7,14 +7,22 @@ int32_t main()
 	std::cout << std::fixed;
 	std::cout.precision(10);
 
-// 	edex::Interpreter testInterpreter({"SET x TO \"HELLO\"",
-// 									   "SEND x TO DISPLAY",
-// 									   "SEND x & \" THERE\" TO DISPLAY"});
-
-	edex::Interpreter testInterpreter({"SET x TO 10",
-									   "SET y TO x",
-									   "SEND x TO DISPLAY",
-									   "SEND y TO DISPLAY"});
+	edex::Interpreter testInterpreter({
+		"SET x TO \" HELLO\"",
+		"SET y TO \" THERE\"",
+		"SET z TO \" BOB!\"",
+		"SET xy TO x & y",
+		"SET xyz TO x & y & z",
+		"SET xy2 TO \" HELLO\" & \" THERE\"",
+		"SET xyz2 TO \" HELLO\" & \" THERE\" & \" BOB!\"",
+		"SEND x TO DISPLAY",
+		"SEND y TO DISPLAY",
+		"SEND z TO DISPLAY",
+		"SEND xy TO DISPLAY",
+		"SEND xyz TO DISPLAY",
+		"SEND xy2 TO DISPLAY",
+		"SEND xyz2 TO DISPLAY"
+									  });
 
 	auto start = edex::seconds();
 	auto compilerOutput = testInterpreter.compile();
