@@ -13,7 +13,7 @@ namespace edex
 		virtual inline double castToFloat() const = 0;
 		virtual inline std::string castToString() const = 0;
 
-		virtual inline std::string type() const = 0;
+		virtual std::string getType() const = 0;
 	};
 
 	class EdExInt : public Object
@@ -42,7 +42,7 @@ namespace edex
 			return std::to_string(value);
 		}
 
-		std::string type() const override
+		std::string getType() const override
 		{
 			return "int";
 		}
@@ -74,7 +74,7 @@ namespace edex
 			return std::to_string(value);
 		}
 
-		std::string type() const override
+		std::string getType() const override
 		{
 			return "float";
 		}
@@ -103,7 +103,7 @@ namespace edex
 			return value;
 		}
 
-		std::string type() const override
+		std::string getType() const override
 		{
 			return "string";
 		}
@@ -180,15 +180,14 @@ namespace edex
 
 		inline ResultContainer extractType(const std::string &term, bool ignoreStageTwo = false) const
 		{
-			// Check for int type
 			if (rapid::isnum(term) && term.find_first_of('.') == std::string::npos)
-				return ResultContainer("int", 0, 0, false);
-			else if (rapid::isnum(term))
-				return ResultContainer("float", 0, 0, false);
-			else if (rapid::isalphanum(term))
-				return ResultContainer("variable", 0, 0, false);
-			else if (term[0] == term[term.length() - 1] && (term[0] == '\"' || term[0] == '\''))
-				return ResultContainer("string", 0, 0, false);
+				return ResultContainer("int", 0, 0, false);      // Integer
+			if (rapid::isnum(term))
+				return ResultContainer("float", 0, 0, false);    // Float
+			if (rapid::isalphanum(term))
+				return ResultContainer("variable", 0, 0, false); // Miscellaneous variable 
+			if (term[0] == term[term.length() - 1] && (term[0] == '\"' || term[0] == '\''))
+				return ResultContainer("string", 0, 0, false);   // String
 
 			if (!ignoreStageTwo)
 			{
@@ -242,7 +241,7 @@ namespace edex
 					return ResultContainer("variable", 0, 0., false);
 			}
 
-			return ResultContainer("Unknown Type", 0, 0, true);
+			return ResultContainer("Unknown Type or Syntax", 0, 0, true);
 		}
 
 		inline ResultContainer evaluateStringExpression(const std::string &expression) const
@@ -366,6 +365,8 @@ namespace edex
 
 			if (assignType == "int" || assignType == "float" || assignType == "string")
 				compiled.emplace_back(Instruction("SET", {variable}, {}, assignType, solver));
+			else if (assignType == "variable")
+				compiled.emplace_back(Instruction("SET", {variable, expression}, {}, assignType, solver));
 			else
 				return ResultContainer("Unknown assignment type", 0, 0, true);
 
@@ -403,6 +404,9 @@ namespace edex
 			bool foundQuote = false;
 			uint64_t index = 0;
 
+			if (type == "variable")
+				int x = 5;
+
 			for (auto &val : solver.processed)
 			{
 				if (!val.second.empty())
@@ -436,7 +440,7 @@ namespace edex
 						if (std::find(operatorSplit.begin(), operatorSplit.end(), val.second) != operatorSplit.end() || foundString)
 							continue;
 
-						if (variables.at(val.second)->type() != "string")
+						if (variables.at(val.second)->getType() != "string")
 						{
 							val.first = variables.at(val.second)->castToFloat();
 							val.second = "";
@@ -464,6 +468,8 @@ namespace edex
 				return ResultContainer("int", 0, res, std::make_shared<EdExInt>((int64_t) res), false); // std::make_shared<EdExInt>((int64_t) res);
 			if (type == "float")
 				return ResultContainer("float", 0, res, std::make_shared<EdExFloat>(res), false);  // std::make_shared<EdExFloat>(res);
+			if (type == "variable")
+				int x = 0; // DO SOMETHING HERE
 
 			return ResultContainer("Invalid Syntax. Unable to evaluate expression", 0, 0., true);
 		}

@@ -1,13 +1,5 @@
 #include "edex.h"
 
-// edex::IDE ide;
-
-struct testObj
-{
-	uint64_t type;
-	void *val;
-};
-
 int32_t main()
 {
 	std::cout << "EdEx IDE and Interpreter\n";
@@ -15,9 +7,14 @@ int32_t main()
 	std::cout << std::fixed;
 	std::cout.precision(10);
 
-	edex::Interpreter testInterpreter({"SET x TO \"HELLO\"",
+// 	edex::Interpreter testInterpreter({"SET x TO \"HELLO\"",
+// 									   "SEND x TO DISPLAY",
+// 									   "SEND x & \" THERE\" TO DISPLAY"});
+
+	edex::Interpreter testInterpreter({"SET x TO 10",
+									   "SET y TO x",
 									   "SEND x TO DISPLAY",
-									   "SEND x & \"THERE\" TO DISPLAY"});
+									   "SEND y TO DISPLAY"});
 
 	auto start = edex::seconds();
 	auto compilerOutput = testInterpreter.compile();
@@ -29,7 +26,7 @@ int32_t main()
 		exit(1);
 	}
 
-	std::cout << "Time: " << end - start << " seconds\n";
+	std::cout << "Time: " << (end - start) * 1000 << " ms\n";
 
 	for (const auto &line : testInterpreter.compiled)
 	{
@@ -58,6 +55,8 @@ int32_t main()
 		std::cerr << "Interpreter Error: " << interpreterOutput.infoString << "\n"; exit(1);
 		exit(1);
 	}
+
+	std::cout << "Time: " << (end - start) * 1000 << " ms\n";
 
 	std::cout << "\n\n";
 
