@@ -13,14 +13,21 @@ int32_t main()
 	std::cout << "EdEx IDE and Interpreter\n";
 
 	std::cout << std::fixed;
+	std::cout.precision(10);
 
-	edex::Interpreter testInterpreter({"SET x TO 10",
-									   "SET y TO x / 3",
-									   "SEND y TO DISPLAY"});
+	edex::Interpreter testInterpreter({"SET value TO 5 + 5 - 3 * 10 / 123",
+									   "SEND value TO DISPLAY"});
 
 	auto start = edex::seconds();
-	testInterpreter.compile();
+	auto compilerOutput = testInterpreter.compile();
 	auto end = edex::seconds();
+
+	if (compilerOutput.isError)
+	{
+		std::cerr << "Compiler Error: " << compilerOutput.infoString << "\n";
+		exit(1);
+	}
+
 	std::cout << "Time: " << end - start << " seconds\n";
 
 	for (const auto &line : testInterpreter.compiled)
@@ -41,19 +48,21 @@ int32_t main()
 		std::cout << "\n";
 	}
 
-	std::cout << "\n\n\n";
-
 	start = edex::seconds();
-	testInterpreter.interpret();
+	auto interpreterOutput = testInterpreter.interpret();
 	end = edex::seconds();
 
-	std::cout << "\n\n\n";
-
-	std::cout << "Time: " << end - start << " seconds\n";
-
-	for (const auto &variable : testInterpreter.heap)
+	if (interpreterOutput.isError)
 	{
-		std::cout << "Name: " << variable.first << " | Value: " << variable.second->castToString() << "\n";
+		std::cerr << "Interpreter Error: " << interpreterOutput.infoString << "\n"; exit(1);
+		exit(1);
+	}
+
+	std::cout << "\n\n";
+
+	for (const auto &out : testInterpreter.output)
+	{
+		std::cout << ">>> " << out.line << "\n";
 	}
 
 	// auto ide = edex::IDE();

@@ -4,55 +4,6 @@
 
 namespace edex
 {
-	class ResultContainer
-	{
-	public:
-		std::string infoString;
-		uint64_t infoInt;
-		double infoDouble;
-		bool isError;
-
-		ResultContainer(const std::string &sInfo, uint64_t iInfo, double dInfo, bool error) : infoString(sInfo), infoInt(iInfo), infoDouble(dInfo), isError(error)
-		{}
-	};
-
-	class Instruction
-	{
-	public:
-		uint64_t scope;
-		std::string name;
-		std::vector<std::string> vars;
-		std::vector<std::string> info;
-		std::string typeInfo;
-		rapid::ExpressionSolver solver;
-
-		Instruction(const std::string &sName,
-					const std::vector<std::string> &lVars,
-					const std::vector<std::string> &lInfo,
-					const std::string &sType) :
-			name(sName), vars(lVars), info(lInfo), typeInfo(sType), scope(-1)
-		{}
-
-		Instruction(const std::string &sName,
-					const std::vector<std::string> &lVars,
-					const std::vector<std::string> &lInfo,
-					const std::string &sType,
-					const rapid::ExpressionSolver &cSolver) :
-			name(sName), vars(lVars), info(lInfo), typeInfo(sType), solver(cSolver), scope(-1)
-		{}
-	};
-
-	class Output
-	{
-	public:
-		std::string line;
-		std::string destination;
-
-		Output(const std::string &out, const std::string &dest) :
-			line(out), destination(dest)
-		{}
-	};
-
 	class Object
 	{
 	public:
@@ -129,6 +80,88 @@ namespace edex
 		}
 	};
 
+	class EdExString : public Object
+	{
+	public:
+		std::string value;
+
+		EdExString(const std::string &val) : value(val)
+		{}
+
+		int64_t castToInt() const override
+		{
+			return std::stoll(value);
+		}
+
+		double castToFloat() const override
+		{
+			return std::stod(value);
+		}
+
+		std::string castToString() const override
+		{
+			return value;
+		}
+
+		std::string type() const override
+		{
+			return "string";
+		}
+	};
+
+	class ResultContainer
+	{
+	public:
+		std::string infoString;
+		uint64_t infoInt;
+		double infoDouble;
+		std::shared_ptr<Object> objPtr;
+		bool isError;
+
+		ResultContainer(const std::string &sInfo, uint64_t iInfo, double dInfo, bool error) : infoString(sInfo), infoInt(iInfo), infoDouble(dInfo), isError(error)
+		{}
+
+		ResultContainer(const std::string &sInfo, uint64_t iInfo, double dInfo, std::shared_ptr<Object> pObj, bool error) : infoString(sInfo), infoInt(iInfo), infoDouble(dInfo), objPtr(pObj), isError(error)
+		{}
+	};
+
+	class Instruction
+	{
+	public:
+		uint64_t scope;
+		std::string name;
+		std::vector<std::string> vars;
+		std::vector<std::string> info;
+		std::string typeInfo;
+		rapid::ExpressionSolver solver;
+
+		Instruction(const std::string &sName,
+					const std::vector<std::string> &lVars,
+					const std::vector<std::string> &lInfo,
+					const std::string &sType) :
+			name(sName), vars(lVars), info(lInfo), typeInfo(sType), scope(-1)
+		{}
+
+		Instruction(const std::string &sName,
+					const std::vector<std::string> &lVars,
+					const std::vector<std::string> &lInfo,
+					const std::string &sType,
+					const rapid::ExpressionSolver &cSolver) :
+			name(sName), vars(lVars), info(lInfo), typeInfo(sType), solver(cSolver), scope(-1)
+		{}
+	};
+
+	class Output
+	{
+	public:
+		std::string line;
+		std::string destination;
+
+		Output(const std::string &out, const std::string &dest) :
+			line(out), destination(dest)
+		{}
+	};
+
 	class Interpreter
 	{
 	public:
@@ -138,7 +171,7 @@ namespace edex
 		std::map<std::string, std::shared_ptr<Object>> heap;
 		std::vector<Output> output;
 
-		std::vector<std::string> operatorSplit = {" ", "(", ")", "+", "-", "*", "/", "^", "%"};
+		std::vector<std::string> operatorSplit = {" ", "(", ")", "+", "-", "*", "/", "^", "%", "&"};
 
 		Interpreter() = default;
 
@@ -154,6 +187,8 @@ namespace edex
 				return ResultContainer("float", 0, 0, false);
 			else if (rapid::isalphanum(term))
 				return ResultContainer("variable", 0, 0, false);
+			else if (term[0] == term[term.length() - 1] && (term[0] == '\"' || term[0] == '\''))
+				return ResultContainer("string", 0, 0, false);
 
 			if (!ignoreStageTwo)
 			{
@@ -210,6 +245,102 @@ namespace edex
 			return ResultContainer("Unknown Type", 0, 0, true);
 		}
 
+		inline ResultContainer evaluateStringExpression(const std::string &expression) const
+		{
+			// Evaluate expressions involving string variables
+			// >>> "HELLO"
+			// >>> "HELLO " & "THERE"
+			// >>> "Hi " * 100
+
+			std::string res;
+
+			auto split = rapid::splitString(expression, operatorSplit);
+
+			bool isConcatenate = true;
+			bool foundQuote = false;
+			bool addSpace = false;
+
+			uint64_t index = 0;
+			for (const auto &val : split)
+			{
+				if (val.empty())
+					continue;
+
+				if (val == "\"" || val == "\'")
+				{
+					foundQuote = true;
+				}
+				else
+				{
+					bool valid = false;
+
+					if (val[0] == val[val.length() - 1] && (val[0] == '\"' || val[0] == '\''))
+						valid = true;
+					else if ((val[val.length() - 1] == '\"' || val[val.length() - 1] == '\'') && foundQuote)
+					{
+						valid = true;
+						addSpace = true;
+					}
+					else
+					{
+						for (uint64_t i = index; i < split.size(); i++)
+						{
+							if (split[i] == "\"" || split[i] == "\'")
+							{
+								valid = true;
+								addSpace = true;
+							}
+						}
+					}
+
+					if (valid && isConcatenate)
+					{
+						if (addSpace && index > 0)
+							res += " ";
+						res += substring(val, !foundQuote, val.length() - (val[val.length() - 1] == '\"' || val[val.length() - 1] == '\''), false);
+						isConcatenate = false;
+						foundQuote = false;
+						addSpace = false;
+					}
+					else
+					{
+						bool isVariable = false;
+						
+						for (const auto &variable : heap)
+						{
+							if (variable.first == val)
+							{
+								if (addSpace)
+									res += " ";
+
+								res += variable.second->castToString();
+								isVariable = true;
+								isConcatenate = false;
+								foundQuote = false;
+								addSpace = false;
+								break;
+							}
+						}
+
+						if (val[0] == '&' && !isVariable)
+						{
+							if (isConcatenate)
+								return ResultContainer("Invalid Syntax", 0, 0., true);
+							isConcatenate = true;
+							foundQuote = false;
+						}
+					}
+				}
+
+				index++;
+			}
+
+			if (addSpace)
+				res += " ";
+
+			return ResultContainer("", 0, 0., std::make_shared<EdExString>(res), false);
+		}
+
 		inline ResultContainer parseSetVar(const std::string &line)
 		{
 			// Parse "SET x TO y"
@@ -233,7 +364,7 @@ namespace edex
 			solver.infixToPostfix();
 			solver.postfixProcess();
 
-			if (assignType == "int" || assignType == "float")
+			if (assignType == "int" || assignType == "float" || assignType == "string")
 				compiled.emplace_back(Instruction("SET", {variable}, {}, assignType, solver));
 			else
 				return ResultContainer("Unknown assignment type", 0, 0, true);
@@ -253,35 +384,88 @@ namespace edex
 			value = substring(line, 5, to - 1, true);
 			destination = substring(line, to + 3, line.length(), true);
 
-			compiled.emplace_back(Instruction("SEND", {value}, {destination}, ""));
+			auto assignTypeContainer = extractType(value);
+			if (assignTypeContainer.isError)
+				return assignTypeContainer;
+
+			auto solver = rapid::ExpressionSolver(value);
+			solver.compile();
+
+			compiled.emplace_back(Instruction("SEND", {value}, {destination, rapid::isalphanum(value) ? "" : " "}, assignTypeContainer.infoString, solver));
 
 			return ResultContainer("", 0, 0, false);
 		}
 
-		inline std::shared_ptr<Object> calculateExpression(rapid::ExpressionSolver &solver, const std::map<std::string, std::shared_ptr<Object>> variables, const std::string &type) const
+		inline ResultContainer calculateExpression(rapid::ExpressionSolver &solver, const std::map<std::string, std::shared_ptr<Object>> variables, const std::string &type) const
 		{
 			// Process the data to insert variable values
+			bool foundString = false;
+			bool foundQuote = false;
+			uint64_t index = 0;
+
 			for (auto &val : solver.processed)
 			{
 				if (!val.second.empty())
 				{
-					if (std::find(operatorSplit.begin(), operatorSplit.end(), val.second) != operatorSplit.end())
-						continue;
+					bool found = false;
 
-					val.first = variables.at(val.second)->castToFloat();
-					val.second = "";
+					if (val.second[0] == val.second[val.second.length() - 1] && (val.second[0] == '\"' || val.second[0] == '\''))
+					{
+						foundString = true;
+						found = true;
+					}
+					else if ((val.second[val.second.length() - 1] == '\"' || val.second[val.second.length() - 1] == '\'') && foundQuote)
+					{
+						foundString = true;
+						found = true;
+					}
+					else
+					{
+						for (uint64_t i = index; i < solver.processed.size(); i++)
+						{
+							if (solver.processed[i].second == "\"" || solver.processed[i].second == "\'")
+							{
+								foundString = true;
+								found = true;
+							}
+						}
+					}
+
+					if (!found)
+					{
+						if (std::find(operatorSplit.begin(), operatorSplit.end(), val.second) != operatorSplit.end() || foundString)
+							continue;
+
+						if (variables.at(val.second)->type() != "string")
+						{
+							val.first = variables.at(val.second)->castToFloat();
+							val.second = "";
+						}
+						else
+						{
+							foundString = true;
+							val.first = 0;
+							val.second = variables.at(val.second)->castToString();
+						}
+					}
 				}
+
+				index++;
+			}
+
+			if (foundString)
+			{
+				return evaluateStringExpression(solver.expression);
 			}
 
 			auto res = solver.eval();
 
 			if (type == "int")
-				return std::make_shared<EdExInt>((int64_t) res);
+				return ResultContainer("int", 0, res, std::make_shared<EdExInt>((int64_t) res), false); // std::make_shared<EdExInt>((int64_t) res);
 			if (type == "float")
-				return std::make_shared<EdExFloat>(res);
+				return ResultContainer("float", 0, res, std::make_shared<EdExFloat>(res), false);  // std::make_shared<EdExFloat>(res);
 
-			std::cout << "Unable to calculate expression\n";
-			exit(1);
+			return ResultContainer("Invalid Syntax. Unable to evaluate expression", 0, 0., true);
 		}
 
 		inline ResultContainer compile()
@@ -319,12 +503,31 @@ namespace edex
 			{
 				if (instruction.name == "SET")
 				{
-					heap[instruction.vars[0]] = calculateExpression(instruction.solver, heap, instruction.typeInfo);
+					auto res = calculateExpression(instruction.solver, heap, instruction.typeInfo);
+					if (res.isError)
+						return res;
+
+					heap[instruction.vars[0]] = res.objPtr;
 				}
 				else if (instruction.name == "SEND")
 				{
-					std::cout << "Interpreter Output (" << instruction.info[0] << "): " << heap.at(instruction.vars[0])->castToString() << "\n";
-					output.emplace_back(Output(heap.at(instruction.vars[0])->castToString(), instruction.info[0]));
+					if (instruction.info[0] != "DISPLAY")
+						return ResultContainer("Invalid Output Location", 0, 0., true);
+
+					if (!instruction.info[1].empty())
+					{
+						auto res = calculateExpression(instruction.solver, heap, instruction.typeInfo);
+						if (res.isError)
+							return res;
+
+						output.emplace_back(Output(res.objPtr->castToString(), instruction.info[0]));
+					}
+					else
+					{
+						output.emplace_back(Output(heap.at(instruction.vars[0])->castToString(), instruction.info[0]));
+					}
+
+					std::cout << "Interpreter output: " << output[output.size() - 1].line << "\n";
 				}
 			}
 

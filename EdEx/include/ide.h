@@ -25,12 +25,11 @@ namespace edex
 
 			ptrIDE = this;
 
-			windows.push_back(TextWindow(0, 0, ScreenWidth(), ScreenHeight(), this));
+			windows.push_back(TextWindow(10, 10, ScreenWidth() - 10, ScreenHeight() - 10, this));
 			windows[0].setBackground({35, 50, 50});
 			windows[0].setTextColor({204, 204, 204});
 
 			timeOpened = seconds();
-			windows[0].makeFullScreen();
 
 			windows[0].setSyntaxHighlight(true);
 			windows[0].setHighlightRules(generateRules());
@@ -43,6 +42,9 @@ namespace edex
 
 		bool OnUserUpdate(float fElapsed)
 		{
+			// TODO: Do something about this
+			Clear(windows[0].background);
+
 			for (auto &window : windows)
 			{
 				if (!window.render(this))

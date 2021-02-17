@@ -145,7 +145,7 @@ namespace edex
 			{
 				if (!syntaxHighlight)
 				{
-					window->DrawString(0, i * 10 * textScale, lines[i], textColor, textScale);
+					window->DrawString(drawOriginX, drawOriginY + i * 10 * textScale, lines[i], textColor, textScale);
 				}
 				else
 				{
@@ -154,7 +154,7 @@ namespace edex
 					uint64_t len = 0;
 					for (const auto &token : highlighted)
 					{
-						window->DrawString(len * 8 * textScale, i * 10 * textScale, token.first, token.second, textScale);
+						window->DrawString(drawOriginX + len * 8 * textScale, drawOriginY + i * 10 * textScale, token.first, token.second, textScale);
 						len += token.first.length();
 					}
 				}
