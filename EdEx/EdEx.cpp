@@ -23,13 +23,14 @@ int32_t main()
 		// "SEND xy2 TO DISPLAY",
 		// "SEND xyz2 TO DISPLAY",
 		// "SEND \"\n\n\n\" TO DISPLAY",
-		// 
 
-		"SET x TO 5",
-		"SET y TO 10",
+		"SET x TO 5 + 3",
+		"SET y TO 10 - 2",
 		"SEND x TO DISPLAY",
 		"SEND y TO DISPLAY",
-		"SEND x > y TO DISPLAY"
+		"SEND x = y TO DISPLAY",
+		"SEND 5 < y TO DISPLAY",
+		"SEND \"ABC\" = \"ABC\" TO DISPLAY"
 									  });
 
 	auto start = edex::seconds();

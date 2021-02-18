@@ -101,8 +101,9 @@ namespace rapid
 		std::vector<std::string> functionNames;
 		std::vector<std::function<double(double)>> functionDefinitions;
 
-		// Error tracking
+		// Tracking
 		bool errorOccured = false;
+		bool containsEquality = false;
 
 	public:
 
@@ -169,9 +170,9 @@ namespace rapid
 						append = true;
 					else if (i > 1 && (term == "+" || term == "-") && (std::find(operators.end() - 6, operators.end(), infix[infix.size() - 2]) != operators.end()))
 						append = true;
-
-					i++;
 				}
+
+				i++;
 			}
 		}
 
@@ -197,8 +198,7 @@ namespace rapid
 						modified = true;
 					}
 				}
-
-				if (infix[i] == "<")
+				else if (infix[i] == "<")
 				{
 					if (i < infix.size() - 1 && infix[i + 1] == "=")
 					{
@@ -206,16 +206,20 @@ namespace rapid
 						modified = true;
 						i++;
 					}
-					else
+					else if (i < infix.size() - 1 && infix[i + 1] != ">")
 					{
 						newInfix.emplace_back("<");
 						modified = true;
 					}
 				}
-
-				if (i < infix.size() - 1 && infix[i] == "!" && infix[i + 1] == "=")
+				else if (infix[i] == "=")
 				{
-					newInfix.emplace_back(">=");
+					newInfix.emplace_back("=");
+					modified = true;
+				}
+				else if (i < infix.size() - 1 && infix[i] == "<" && infix[i + 1] == ">")
+				{
+					newInfix.emplace_back("<>");
 					modified = true;
 					i++;
 				}
@@ -374,26 +378,37 @@ namespace rapid
 						else if (term.second == ">")
 						{
 							stack.push(a > b);
+							containsEquality = true;
 							evaluated = true;
 						}
 						else if (term.second == "<")
 						{
 							stack.push(a < b);
+							containsEquality = true;
 							evaluated = true;
 						}
 						else if (term.second == ">=")
 						{
 							stack.push(a >= b);
+							containsEquality = true;
 							evaluated = true;
 						}
 						else if (term.second == "<=")
 						{
 							stack.push(a <= b);
+							containsEquality = true;
 							evaluated = true;
 						}
-						else if (term.second == "!=")
+						else if (term.second == "<>")
 						{
 							stack.push(a != b);
+							containsEquality = true;
+							evaluated = true;
+						}
+						else if (term.second == "=")
+						{
+							stack.push(a == b);
+							containsEquality = true;
 							evaluated = true;
 						}
 						else
@@ -418,6 +433,9 @@ namespace rapid
 
 		inline void compile()
 		{
+			infix = {};
+			postfix = {};
+			processed = {};
 			expressionToInfix();
 			processInfix();
 			infixToPostfix();

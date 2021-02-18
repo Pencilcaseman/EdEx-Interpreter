@@ -635,7 +635,7 @@ namespace edex
 			return ResultContainer("", 0, 0, false);
 		}
 
-		inline ResultContainer calculateExpression(rapid::ExpressionSolver &solver, const std::map<std::string, std::shared_ptr<Object>> variables, const std::string &type) const
+		inline ResultContainer calculateExpression(rapid::ExpressionSolver &solver, const std::map<std::string, std::shared_ptr<Object>> variables, std::string type) const
 		{
 			// Process the data to insert variable values
 			bool foundString = false;
@@ -673,8 +673,8 @@ namespace edex
 
 					if (!found) // Not a simple string type
 					{
-						// if (val.second == ">" || val.second == "<" || val.second == "=")
-						// 	foundBool = true;
+						if (val.second == ">=" || val.second == "<=" || val.second == "<>")
+							continue; // foundBool = true;
 
 						if (std::find(operatorSplit.begin(), operatorSplit.end(), val.second) != operatorSplit.end() || foundString)
 							continue;
@@ -734,16 +734,14 @@ namespace edex
 			if (foundBool || type == "bool")
 				return evaluateBooleanExpression(solver.expression);
 
-			// ====================================================================
 			for (const auto &variable : variables)
-			{
 				solver.variables[variable.first] = variable.second->castToFloat();
-			}
-			// ====================================================================
 
 			solver.compile();
 			auto res = solver.eval();
 
+			if (solver.containsEquality)
+				return ResultContainer("bool", 0, res, std::make_shared<EdExBool>((bool) res), false);
 			if (type == "int")
 				return ResultContainer("int", 0, res, std::make_shared<EdExInt>((int64_t) res), false);
 			if (type == "float")
