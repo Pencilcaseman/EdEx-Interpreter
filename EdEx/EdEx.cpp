@@ -30,7 +30,7 @@ int32_t main()
 		"SEND y TO DISPLAY",
 		"SEND x = y TO DISPLAY",
 		"SEND 5 < y TO DISPLAY",
-		"SEND \"ABC\" = \"ABC\" TO DISPLAY"
+		"SEND \"ABC\" = \"ABC\" TO DISPLAY" // This does not work
 									  });
 
 	auto start = edex::seconds();
